@@ -1,0 +1,41 @@
+---
+title: "2_reading_in_data"
+output: html_notebook
+---
+
+
+# Calling libraries
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(CodeClanData)
+```
+
+## Read in dog bites data
+
+```{r}
+dog_bite_data <- read_csv("data/dog_bites.csv")
+
+```
+
+# Read in seed mix (xl)
+
+```{r}
+excel_sheets("data/edinburgh_seedmix.xlsx")
+seedmix <- read_excel("data/edinburgh_seedmix.xlsx")
+```
+
+## Import sheet by name
+```{r}
+seedmix_North <- read_excel("data/edinburgh_seedmix.xlsx", sheet = "North Neighbourhood")
+```
+
+## Import sheet by number
+Watch out with this, the data can change
+
+```{r}
+
+seedmix_West <- read_excel("data/edinburgh_seedmix.xlsx", sheet = 5)
+```
+

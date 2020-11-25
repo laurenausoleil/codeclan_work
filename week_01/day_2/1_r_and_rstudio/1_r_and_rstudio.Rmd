@@ -1,0 +1,42 @@
+---
+title: "1_r_and_rstudio"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r}
+10 + 10
+```
+
+# Data Types
+
+## Numbers
+
+Integer, Double
+
+```{r}
+double_variable <- c(1.1,2,3,4)
+double_variable
+class(double_variable)
+```
+
+```{r}
+integer_variable <- c(1L, 4L)
+class(integer_variable)
+```
+
+## Text
+
+```{r}
+
+text_variable <- c("a", "b")
+class(text_variable)
+```
+
+## Boolean/ Logical
+
+```{r}
+
+```
+

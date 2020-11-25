@@ -1,0 +1,263 @@
+---
+title: "3_dplyr"
+output: html_notebook
+---
+
+# Viewing
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+all_deaths <- read_csv("data/character-deaths.csv")
+```
+
+```{r}
+head(all_deaths)
+tail(all_deaths)
+```
+
+```{r}
+dim(all_deaths)
+```
+
+```{r}
+names(all_deaths)
+```
+
+```{r}
+glimpse(all_deaths)
+```
+
+```{r}
+all_deaths
+```
+
+# Wrangling with dplyr
+
+## Select : choose columns(variables) to keep
+
+```{r}
+# Selecting 3 columns, don't save
+select(all_deaths, name, allegiances, year_of_death)
+
+# Assigning the 3 columns to a new variable
+three_column_death <- select(all_deaths, name, allegiances, year_of_death)
+
+## Select all but name, don't save
+select(all_deaths, -name)
+```
+
+# Practice
+Select all columns which relate to a book
+
+```{r}
+# find column names
+names(all_deaths)
+
+# Deselect all without direct reference to book
+select(all_deaths, -name, -gender, -allegiances, -nobility, -year_of_death)
+
+#Using starts with
+
+select(all_deaths, starts_with("book"))
+
+#Using contains
+
+select(all_deaths, contains("book"))
+
+```
+
+# Filter : Picking rows (observations) from data
+
+```{r}
+
+head(all_deaths, 3)
+```
+
+
+```{r}
+
+
+## Only Lannister allegiance
+filter(all_deaths, allegiances == "Lannister")
+
+## All but Lannister allegiance
+filter(all_deaths, allegiances != "Lannister")
+
+```
+
+## Check for value changes
+
+```{r}
+unique(all_deaths$allegiances)
+```
+
+Turns out we have allegiances assigned to Lannister and House Lannister
+
+```{r}
+## Anything which contains Lannister
+filter(all_deaths, allegiances %in% c("House Lannister", "Lannister"))
+```
+
+## Numeric
+```{r}
+
+filter(all_deaths, year_of_death >= 299)
+```
+
+```{r}
+filter(all_deaths, allegiances %in% c("House Lannister", "Lannister") & nobility == 1)
+
+unique((filter(all_deaths, allegiances %in% c("House Lannister", "Lannister") & nobility == 1))$nobility)
+```
+
+## Practice
+
+```{r}
+filter(all_deaths, year_of_death <=299)
+
+```
+
+# Arrange : orders rows
+
+Defaults to ascending
+
+```{r}
+# arrange wtih females first
+
+arrange(all_deaths, gender)
+
+# Descending
+
+arrange(all_deaths, desc(gender))
+
+# Ascending gender then descending nobility
+
+arrange(all_deaths, gender, desc(nobility))
+```
+
+Find the females (gender is 0) who are not Lannisters
+
+```{r}
+filter(all_deaths, gender == 0 & !allegiances == c("Lannisters", "House Lannister" ))
+```
+
+Find just the data for the characters “Jon Snow”, “Daenerys Targaryen” and “Samwell Tarly”.
+
+
+Arrange all_deaths by allegiances. What happens when you arrange by a character column?
+
+```{r}
+arrange(all_deaths, allegiances)
+```
+
+Arrange all_deaths by allegiances and book_intro_chapter
+```{r}
+arrange(all_deaths, allegiances, book_intro_chapter)
+```
+
+Arrange all_deaths by descending year_of_death
+```{r}
+arrange(all_deaths, desc(year_of_death))
+```
+
+# Mutate Function
+
+## New Column
+
+Create a column which contains years survived = year of death - 298
+```{r}
+mutate(all_deaths, years_survived = year_of_death - 298)
+```
+
+## Overwrite Existing Column
+
+```{r}
+mutate(all_deaths, book_of_death = book_of_death * 5)
+```
+
+# Summarise
+
+calculates summary statistics
+
+```{r}
+summarise(all_deaths, females = sum(gender))
+```
+
+## Grouping
+
+```{r}
+# Groups all the zeros together and all the ones together
+# More transparent than the above
+sex_grouped <-  group_by(all_deaths, gender)
+
+summarise(sex_grouped, count = n() )
+```
+
+```{r}
+deaths_grouped <- group_by(all_deaths, allegiances, gender)
+
+summarise(deaths_grouped, count = n())
+```
+
+# Practice
+
+If a character doesn’t have a missing value for book_of_death, this means that they have died at some point. Use this to find the allegiances with the highest number of people dead.
+Hint You will need to:
+Filter the data so we just have characters who have died.
+
+```{r}
+have_died <- filter(all_deaths, !is.na(book_of_death)) 
+```
+
+Use group by and summarise to find the number of characters who belonged to each allegiance.
+
+```{r}
+dead_allegiance <- group_by(have_died, allegiances)
+
+summarise(dead_allegiance, count=n())
+
+dead_allegiance
+```
+
+# Pipes
+and then. Start with data.
+
+```{r}
+have_died <- filter(all_deaths, !is.na(book_of_death)) 
+died_grouped <- group_by(have_died, allegiances)
+died_counts <- summarise(died_grouped, count = n())
+```
+ 
+```{r}
+all_deaths %>% 
+  filter(!is.na(book_of_death)) %>% 
+  group_by(allegiances) %>% 
+  group_by(allegiances) %>% 
+  summarise(count = n()) %>% 
+  arrange (desc(count))
+```
+ 
+ # Pull function
+ 
+ makes something a value
+ 
+```{r}
+average_year_of_death <- all_deaths %>% 
+  summarise (average_value = mean(year_of_death, na.rm = TRUE))
+
+average_year_of_death # print to check
+class(average_year_of_death) #data.frame
+
+```
+ 
+```{r}
+average_year_of_death <- all_deaths %>% 
+  summarise (average_value = mean(year_of_death, na.rm = TRUE)) %>% 
+  pull()
+average_year_of_death
+class(average_year_of_death) # numeric
+```
+ 
