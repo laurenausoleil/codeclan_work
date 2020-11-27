@@ -1,0 +1,47 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(janitor)
+```
+
+```{r}
+video_games <- read_csv("data/steam-200k-sample.csv")
+```
+We find an error in opening the file, open it in text editor to identify the problem
+
+```{r}
+video_games <- read_csv("data/steam-200k-sample.csv", skip =4)
+```
+
+# Look at text
+
+```{r}
+names(video_games)
+```
+
+Find that bought online looks like boolean, but has input as numeric.
+So let's read in the file, using the column types argument on the column called "bought online" requesting column type logical
+
+```{r}
+video_games <- read_csv("data/steam-200k-sample.csv", 
+                        skip =4, 
+                        col_types = cols("bought online" = col_logical()))
+```
+
+
+Some of our variable names and column types are not useful to us, for example they include spaces and we don't know what "what" means. Use janitor package to clean name. This doesn't change the original data unless we specify.
+
+```{r}
+video_games_clean_names <- clean_names(video_games)
+```
+
+Option to use rename from dplyr.
+
+```{r}
+names(video_games_clean_names) <- c("customer_id", "game_title", "activity", "playing_hours", "bought_online")
+```
+

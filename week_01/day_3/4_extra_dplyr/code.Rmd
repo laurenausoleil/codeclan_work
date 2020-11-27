@@ -1,0 +1,116 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+new_coders <- read_csv("data/new_coders.csv")
+```
+
+```{r}
+new_coders %>% 
+  group_by(reasons_to_code) %>% 
+    mutate(
+      mean_expected_earn = mean(expected_earn),
+      difference_from_avg = expected_earn - mean_expected_earn
+      )
+```
+
+Add a new column average_age_for_gender, which shows the average age of people the same gender as the respondent.
+
+```{r}
+new_coders %>% 
+  select(gender, age) %>% 
+  group_by(gender) %>% 
+  mutate(average_age_for_gender = mean(age)
+         )
+```
+# Stealing Damien's variance code!
+
+```{r}
+new_coders %>% 
+  group_by(gender) %>% 
+  mutate(
+    average_age_for_gender = mean(age),
+    variance = age - average_age_for_gender
+  ) %>% 
+  select(gender, age, average_age_for_gender, variance)
+```
+
+```{r}
+library(CodeClanData)
+
+chinesemeal
+```
+
+# Window Functions
+
+## Lag and Lead
+
+Lags and leads depend on ordering and grouping data
+
+```{r}
+chinesemeal %>% 
+  arrange(Year) %>% 
+  group_by(FoodType) %>% 
+  mutate(
+    last_year_calories = lag(CaloriesPerDay),
+    difference_from_last_year = CaloriesPerDay - last_year_calories,
+    five_years_ago_calories = lag(CaloriesPerDay, n=5) 
+         ) %>% 
+  select(Year, CaloriesPerDay, last_year_calories, five_years_ago_calories)
+```
+
+# Cumulative sum and mean
+A cumulative mean can smooth your data out.
+
+Find the cumulative average calories for each type of food in the chinesemeal data.
+
+```{r}
+chinesemeal %>% 
+  group_by(FoodType) %>% 
+  mutate(
+    cumulative_calories = cummean(CaloriesPerDay)
+  )
+```
+
+# Across - Doing stuff on multiple columns
+
+```{r}
+deaths = read_csv("data/character-deaths.csv")
+```
+
+```{r}
+deaths %>% 
+  mutate(across(book1_GoT:book5_DwD, as.logical))
+```
+
+```{r}
+deaths %>% 
+  summarise(across(book1_GoT:book5_DwD, sum))
+```
+
+
+# Where
+```{r}
+deaths %>% 
+  summarise(across(where(is.numeric), sum))
+```
+# Logical Tests
+
+is.character
+is.logical etc.
+
+# Across Practice
+
+Change all character columns in new_coders into factors. Use across() to do this.
+
+```{r}
+deaths %>% 
+  mutate(across(where(is.character), as.factor))
+```
+

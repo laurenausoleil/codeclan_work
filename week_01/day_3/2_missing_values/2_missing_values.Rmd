@@ -1,0 +1,135 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Missing Values
+
+What we do with missing values depends on the context we're working in.
+
+## Investigate the data to find out what type of missing value you have.
+
+## Categories of missing values
+
+### Missing Completely at Random MCAR
+No pattern. We need to investigate if there is a pattern to the missing values
+
+## Missing at Random
+the probability of a value missing can be related to another variable. 
+
+## Missing not at Random (MNAR)
+When the missing values are dependent on the column, for example if people with lower incomes have not provided their income.
+
+```{r}
+is.na(NA)
+```
+```{r}
+is.na(NaN)
+```
+
+# What to do with missing values
+
+## Ignore?
+
+## Drop?
+Drop depending on category.
+If you drop a MNAR you can create bias
+
+## Replace?
+Imputation - many options. 
+some basic replacements are mean, median, mode.
+
+# Read in data
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+comms_data <- read_csv("data/telecom_data.csv")
+```
+
+# Identifying Missing Values
+
+In one column
+
+```{r}
+comms_data %>% 
+  filter(is.na(monthly_charges))
+```
+
+Check everywhere, cheat.
+Omit drops all missing values from all places. We can then check the size of this against the original dimensions.
+
+```{r}
+comms_data %>% 
+  na.omit() %>%
+  dim()
+```
+```{r}
+dim(comms_data)
+```
+
+Count missing values
+
+```{r}
+comms_data %>% 
+  summarise(sum(is.na(monthly_charges)))
+```
+
+Remove missing values
+
+```{r}
+comms_data_no_missing <- 
+  comms_data %>% 
+  filter(!is.na(monthly_charges))
+```
+
+Replace missing Values - Impute
+
+```{r}
+comms_data %>% 
+  mutate(monthly_charges = coalesce(monthly_charges, mean(monthly_charges, na.rm = TRUE)))
+```
+These methods won't pick up anything except NA and NaN values.
+
+## Hidden Missing Values
+But sometimes missing values have a value, represented by strings like "na" "N/A" "NN" "-99" "-999" "" (a blank string)
+```{r}
+comms_data %>% 
+  filter(is.na(total_charges))
+```
+
+For categorical data
+
+```{r}
+comms_data %>% 
+  mutate(total_charges = na_if(total_charges, "na"),
+         total_charges = na_if(total_charges, "N/A"))
+```
+
+For numeric data
+```{r}
+comms_data %>% 
+  mutate(total_charges = as.numeric(total_charges))
+```
+
+# Practice
+Take a look at the payment_method column and find the different type of missing value identifiers we have, and how many we have.
+Replace these with NA, and then check if you have the right amount
+
+Find all values
+
+```{r}
+comms_data %>% 
+  summarise(unique(payment_method))
+```
+
+Mutate values to NA using na_if
+
+```{r}
+comms_data %>% 
+  mutate(payment_method = na_if(payment_method, "--")) %>% 
+  summarise(unique(payment_method))
+```
+

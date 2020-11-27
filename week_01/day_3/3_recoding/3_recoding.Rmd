@@ -1,0 +1,143 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(CodeClanData)
+```
+
+```{r}
+students_big
+```
+
+# Recoding
+
+changing a single categorical variable
+
+## IfElse
+
+```{r}
+students_big %>% 
+  mutate(older_than_12 = if_else(ageyears>12, "Older than 12", "12 or Younger"))
+```
+
+```{r}
+students_big %>%
+  mutate(gender = if_else(gender == "M", "Male", "Female"))
+```
+# Practice
+change R and L to right and left
+change football/soccer into 'football
+
+```{r}
+students_big %>% 
+  mutate(handed = if_else(handed == "R", "right-handed", "left-handed"))
+```
+
+```{r}
+students_big %>% 
+  summarise(unique(favourite_physical_activity))
+```
+If Else, with the else as do nothing
+
+```{r}
+students_big %>% 
+  mutate(favourite_physical_activity = if_else(favourite_physical_activity == "Football/Soccer", "Football", favourite_physical_activity))
+```
+
+## Recode
+
+```{r}
+students_big %>% 
+  mutate(travel_to_school = recode(travel_to_school, "Car" = "car", "Walk" = "walk", "Bus" = "bus"))
+```
+Another way to see a list of all values.
+
+```{r}
+students_big %>% 
+  group_by(travel_to_school) %>% 
+  summarise (n=n())
+```
+
+Then we can replace whatever we haven't described with a default value
+
+```{r}
+students_big %>% 
+  mutate(travel_to_school = recode(travel_to_school, "Car" = "car", "Walk" = "walk", "Bus" = "bus", .default = "other"))
+```
+# Practice
+Using the data below, do the following:
+Recode the subject numbers to be: 001, 002, 003 and 004
+Recode the sex column to be “Male” and “Female”
+Recode the compl column to be T = “True”, F = “False”, and NA otherwise
+
+```{r}
+data <- read.table(header = TRUE, text="
+ subject sex control cond1 cond2 compl
+       1   M     7.9  12.3  10.7  T
+       2   F     6.3  10.6  11.1  T
+       3   F     9.5  13.1  13.8  N
+       4   M    11.5  13.4  12.9  F
+")
+```
+
+```{r}
+data %>% 
+  mutate(
+    subject  = recode (subject, 
+                     "1" = "001", 
+                     "2" = "002", 
+                     "3" = "003", 
+                     "4" = "004",
+                     ),
+    sex = if_else
+          (sex == "M", "Male", "Female")
+    ,
+    compl = recode(compl, 
+                 "T" = TRUE, 
+                 "F" = FALSE, 
+                 .default = NA)
+    )
+```
+
+## Format better and remember you can stack mutations
+
+## Case_When
+
+```{r}
+students_big %>% 
+  select(ageyears) %>% 
+  mutate(
+    age_divisible = case_when(
+    ageyears %% 2 == 0 ~ "Even",
+    ageyears %% 3 == 0 ~ "Divisible by 3",
+    ageyears %% 5 == 0 ~ "Divisible by 5",
+    TRUE ~ "Other number")
+  )
+```
+
+Recode and Case when need the outputs to be all the same type
+
+# Practice
+
+Using case_when, make a new column estimated_travel_time which is:
+Equal to 60 when your region is London.
+If you aren’t from London, then:
+10 when your travel_to_school is “Walk”.
+20 when your travel_to_schoolis “Car”.
+For everyone one else then it should equal to 30.
+
+```{r}
+students_big %>% 
+  mutate(estimated_travel_time =
+           case_when(
+             region == "London" ~ 60,
+             travel_to_school == "Walk" ~ 10,
+             travel_to_school == "Car" ~ 20,
+             TRUE ~ 30
+           )
+           )
+```
+
