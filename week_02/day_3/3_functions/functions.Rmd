@@ -1,0 +1,136 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(stringr)
+```
+
+
+# Writing Functions
+
+Pseudo
+```{r}
+function_name <- function(argument_1, argument_2, argument_3 = value) {
+  
+  do something with arguments
+  
+  return(output)
+}
+```
+
+multiply by 5
+```{r}
+multiply_by_5 <- function(x) {
+  return(x* 5)
+}
+```
+
+multiply by each other
+```{r}
+multiply_by <- function(x, y) {
+  x*y
+}
+```
+
+function with a default
+```{r}
+multiply_by_5_unless <- function(x, y=5) {
+  return(x*y)
+}
+```
+
+# Practice
+Write a function make_price() that takes as input any whole number, and returns it written as a price (i.e. with a ‘£’ in front of the number). For example 5 would become £5, and 123 would become £123. Try out your function a few times to test that it works.
+
+```{r}
+make_price <- function(x) {
+  return(paste("£", x, sep = ""))
+}
+
+make_price(199)
+```
+
+Write a function make_fancy_price() that takes any decimal number and returns it as a ‘written out’ price in the form “# pounds # pence”. If the input number corresponds only to whole pounds or whole pence, then return only that part of the price (e.g. “# pounds” or “# pence”). You’ll also need to round to the nearest number of pence.
+
+```{r}
+# if only whole numbers return "x pounds"
+# if over 1 and not whole return "x pounds, x pence"
+# if less than 1, return "x pence"
+
+after_decimal <- function(x) {
+  while (x > 0.99) {
+    x <- x-1
+  }
+  x <- format(x, nsmall = 2)
+  x <- (as.character(x))
+  x <- str_sub(x, -2, -1)
+  return(x)
+}
+
+undebug(after_decimal)
+
+after_decimal(8.99)
+y <- after_decimal(9.80)
+
+y
+class(y)
+length(y)
+str_sub(y, -2, -1)
+```
+
+
+```{r}
+before_decimal <- function(x) {
+  while (x != round(x)) {
+    x <- x - 0.01
+  }
+  return(x)
+}
+
+before_decimal(8.01)
+```
+
+```{r}
+# before_decimal_efficient <- function(x) {
+#   while (x != round(x)) {
+#     while (x %% .1 != 0) {
+#       x <- x - 0.01
+#     }
+#     x <- x - 0.1
+#   }
+# }
+# 
+# before_decimal_efficient(8.20)
+```
+
+```{r}
+make_fancy_price <- function(x) {
+  if (x < 1) {
+    return(paste(after_decimal(x), "pence"))
+  }
+  if(x > 1 & x %% 1 == 0) {
+    return(paste(before_decimal(x), "pounds"))
+  } else {
+    return(paste(before_decimal(x), "pounds", after_decimal, "pence"))
+  }
+}
+
+make_fancy_price(9.68)
+
+```
+
+
+Here’s some examples of inputs and expected outputs.
+
+Input	Output
+3.23	3 pounds 23 pence
+4.5	4 pounds 50 pence
+8	8 pounds
+50.012	50 pounds 1 pence
+0.546	55 pence
+You may need to think about the DRY principle.
+Perhaps think about separate functions to format pounds and pence correctly.
+Remember you can call one function from inside another.
+

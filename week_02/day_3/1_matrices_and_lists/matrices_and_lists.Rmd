@@ -1,0 +1,200 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Lists
+
+Acts like a container.
+
+```{r}
+x <- list(1, "a", TRUE, c(1,2,3))
+```
+
+```{r}
+c(1:5)
+
+as.list(1:5)
+
+list(1:5)
+```
+
+```{r}
+x[3]
+# returns a list of one element
+```
+
+
+```{r}
+x[[3]]
+# a logical vector
+```
+
+# Named list
+
+```{r}
+named_list <- list(a = "I love R", b = 1:10)
+```
+
+
+```{r}
+#These are all the same calls
+named_list[[2]]
+named_list[["b"]]
+named_list$b
+```
+
+```{r}
+names(named_list)
+```
+
+# Nested lists
+
+```{r}
+student_info <- list(
+                "Agnes" = list(height = 1.8, shoe_size = 8L),
+                "Bobby" = list(height = 2.1, gender = "Male"),
+                "Charlie" = list(gender = "Female", likes_beets = TRUE)
+)
+
+student_info
+```
+
+Find Agnes height
+```{r}
+names(student_info)
+
+names(student_info$Agnes)
+
+student_info$Agnes$height
+```
+
+Find Agnes height assuming the list is unnamed.
+```{r}
+#Pirnt student info, Agnes is index 1
+student_info
+
+# Print Agnes, height is index 1
+student_info[[1]]
+
+student_info[[1]][[1]]
+```
+
+# Practice
+Make a named list that contains a numeric vector and a character vector.
+
+Access the second element of your list using double square brackets [[]]. What is it’s class?
+
+Access the second element of your list using single square brackets []. What is it’s class?
+
+Access the second element of your list by name. What is it’s class?
+```{r}
+practice <- list(num = 1:10, char = c("a character vector", "or two", "never three!"))
+```
+
+```{r}
+practice[[2]]
+class(practice[[2]])
+# character
+```
+
+```{r}
+practice[2]
+class(practice[2])
+# a list
+```
+
+```{r}
+practice[["char"]]
+
+class(practice[["char"]])
+```
+
+# Matrices
+
+Matrices take values and build a table with them. Recycling values to fill the table.
+It defaults to assigning values column by column.
+```{r}
+matrix(1:4, nrow =2, ncol =2)
+```
+
+```{r}
+m <-matrix(1:4, nrow = 2, ncol = 2, byrow = TRUE)
+```
+
+# Selecting elements in a matrix
+
+```{r}
+m <- matrix(1:6, nrow = 2, ncol = 3)
+```
+
+
+We select objects in a matrix by row and column number, first row then column
+
+Select everything in first row
+```{r}
+m[1, ]
+```
+
+Select everything in first column
+```{r}
+m[ ,1]
+```
+
+Select row 1, column 3
+```{r}
+m[1,3]
+```
+
+Select multiple rows
+```{r}
+m[ , c(1,3)]
+```
+
+# Calculations in matrices
+
+We can manipulate everything in a matrix at once. apparently you can do this with vectors too!
+```{r}
+m*3
+m-2
+```
+
+# Calculations on rows or columns
+
+sum of rows returned as a numeric vector
+```{r}
+class(rowSums(m))
+```
+
+mean of columns returned as numeric vector
+```{r}
+colMeans(m)
+```
+
+colSums
+rowMeans
+
+# Practice
+Make a matrix with 3 rows and 4 columns. Each column should contain the numbers 1 to 3.
+```{r}
+prac <- matrix(1:3, nrow = 3, ncol = 4)
+prac <- matrix(rep(1:3), nrow = 3, ncol = 4)
+```
+
+Use dim() to check that the dimensions are as you expect.
+```{r}
+dim(prac)
+```
+
+Check that all the columns are identical by checking that their sums are the same.
+```{r}
+colSums(prac)
+```
+
+
+Name the rows of the matrix ‘one’, ‘two’ and ‘three’.
+
+```{r}
+rownames(prac) <- c("one", "two", "three")
+```
+

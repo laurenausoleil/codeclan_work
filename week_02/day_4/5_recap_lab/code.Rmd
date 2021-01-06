@@ -1,0 +1,217 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+The data for this lab comes from Our World in Data and contains the average daily per capita supply of calories from a range of food commodities by country across many years. You can read more about the data here in the ‘Sources’ tab.
+
+
+
+Question 1
+
+Read in the data containing dietary compositions and familiarise yourself with it.
+
+```{r}
+library(tidyverse)
+library(janitor)
+```
+
+```{r}
+diet <- read_csv("data/dietary-composition-by-country.csv")
+```
+
+Each row has observations about one country for one year.
+The values are the number of calories consumed from that group.
+Data from 1961 to 2013.
+
+Question 2
+
+Change the data to long format with food categories going to a column called kcal_source and the calorie values going to a column called avg_daily_kcals. Save into variable diet_comp_clean
+
+```{r}
+clean_diet <- clean_names(diet)
+```
+
+```{r}
+
+names(clean_diet) <- gsub("_fao_2017", "", names(clean_diet))
+```
+
+```{r}
+clean_diet <- pivot_longer(clean_diet,
+             cols = alcoholic_beverages:wheat,
+             names_to = "kcal_source",
+             values_to = "avg_daily_kcals"
+            )
+```
+
+
+Question 3
+
+Clean kcal_source categories by removing any unnecessary information. Then clean all column names, and rename the column ‘entity’ to ‘country’. Overwrite diet_comp_clean with your results. [Hint: you’ll probably have to use some regex to clean kcal_source categories]
+
+```{r}
+clean_diet <- clean_diet %>% 
+  rename("country" = "entity")
+
+# clean_diet <- 
+  clean_diet %>% 
+    mutate(kcal_source = str_replace_all(kcal_source, "_", " "))
+
+# clean_diet %>% 
+#   (mutate(
+#     kcal_source = str_sub(kcal_source, 1, -9)
+#   ))
+```
+
+Question 4
+
+Check how many missing values there are in each column.
+
+2650 missing codes, 8026 missing average daily calories in a dataset of 224525.
+
+```{r}
+clean_diet %>% 
+  summarise(across(.fns = ~sum(is.na(.x))))
+```
+
+
+Question 5
+
+Let’s investigate the missing values in column code further. First, check which countries are missing a code. Save these as a character vector, and use this vector to check whether you can find their code anywhere in the dataset, i.e. is the code missing for every observation for these countries.
+
+```{r}
+# finding missing countries and assign
+missing_code_countries <- clean_diet %>% 
+  filter(is.na(code)) %>%
+  pull(country) %>% 
+  unique() %>% 
+  print()
+```
+
+```{r}
+typeof(missing_code_countries)
+```
+Character Vector
+
+```{r}
+clean_diet %>% 
+  select(country, code) %>% 
+  filter(country %in% missing_code_countries) %>% 
+  drop_na()
+```
+
+
+Question 6
+
+Ok, we have no available country codes for Cabo Verde and the US in this dataset. Is there anything in the data source about what these should be? No… Ok, better find something online then. Google tells us there’s something called ISO Alpha-3 codes which look pretty promising. Wait, what’s that in your data folder? Read it in! Then find the missing codes!
+
+```{r}
+country_codes <- read_csv("data/country_codes.csv") %>% 
+                            clean_names()
+```
+
+```{r}
+country_codes %>% 
+  filter(country %in% country_codes)
+```
+0 rows. Cabo Verde appears in Country Codes as Cape Verde - CPV, USA as United States - USA
+
+```{r}
+clean_diet <- clean_diet %>% 
+  mutate(code =
+           if_else(country == "Cabo Verde", "CPV", code),
+         code =
+           if_else(country == "United States of America", "USA", code)
+  )
+```
+
+
+Question 7
+
+Using a suitable recoding function, fill in the lost (but now found) country codes. Overwrite diet_comp_clean again. Finally, check that there are now no missing values in the code column.
+
+
+Question 8
+
+Note: Do NOT overwrite diet_comp_clean with the result of this question.
+
+Join the two datasets so only countries with matches in both are retained. Create a new logical column that is TRUE if the first two letters of code is the same as alpha_2_code.
+
+```{r}
+inner_join(clean_diet, country_codes) %>% 
+  mutate(code_matches_aplha_2 =
+           if_else(
+             str_sub(code, 1, 2) == alpha_2_code,
+             TRUE,
+             FALSE
+           )
+  ) 
+# %>% 
+#   group_by(code_matches_aplha_2) %>% 
+#   summarise(n = n())
+```
+
+
+
+
+Question 9
+
+That’s enough of country codes! Let’s look at the actual diets of some countries. Using diet_comp_clean, which is hopefully untarnished by the monstrosity that was Question 8, create a new variable called uk_diet which only contains data from the UK and with all NAs from avg_daily_kcals dropped.
+
+```{r}
+uk_diet <- clean_diet %>% 
+  filter(country == "United Kingdom") %>% 
+  drop_na(avg_daily_kcals)
+```
+
+Question 10
+
+Using uk_diet, create a new column that contains the difference in total calories between a year and the year before. Then find the year where there was the biggest positive difference and the biggest negative difference.
+
+Biggest negative difference in 1974: -120	
+Biggest positive difference in 1996: +83
+
+```{r}
+uk_diet %>% 
+  group_by(year) %>% 
+  summarise(total_calories = sum(avg_daily_kcals)) %>% 
+  mutate(calories_difference = total_calories - lag(total_calories)) %>% 
+  arrange(desc(calories_difference)) %>% 
+  drop_na() %>% 
+  head(1)
+
+```
+
+Question 11
+
+Back to diet_comp_clean again. For every year between 1990 and 2000, find which country got the most average daily calories from alcoholic beverages, i.e. you want to end up with one country per year.
+
+```{r}
+# Gets max value per year
+clean_diet %>% 
+  filter(year == 1990:2000) %>% 
+  filter(kcal_source == "alcoholic_beverages") %>% 
+  group_by(year) %>% 
+  summarise(max_value = max(avg_daily_kcals, na.rm = TRUE))
+```
+
+
+
+
+Question 12
+
+Now write a function which finds the top calorie source for a user-specified vector of both countries and years. Then use your function to find the top calorie source for the UK and Zimbabwe in 1965, 1975, 1985, 1995 and 2005. Try out your function a few more times for countries/years that you find interesting! Also consider whether there are any limitations of your function.
+
+
+
+Question 13
+
+Use your function to find the top calorie source in 1970 for all countries starting with B.
+
+
+
+Question 14
+
+If you have made it this far, well done! If you are still itching to do some more data analysis/coding, you can explore the dataset yourself and try to discover something interesting or just practice anything you still feel unsure about!

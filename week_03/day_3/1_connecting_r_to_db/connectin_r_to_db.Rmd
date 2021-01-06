@@ -1,0 +1,65 @@
+---
+title: "Untitled"
+author: "Lauren Davidson"
+date: "09/12/2020"
+output: html_document
+---
+
+```{r}
+source("~/credentials/omni_credentials.R")
+```
+
+```{r}
+library(RPostgres)
+```
+
+```{r}
+db_connection <- dbConnect(
+  drv = Postgres(),
+  user = omni_username,
+  password = omni_password,
+  dbname = "omni_pool",
+  host = "db-postgresql-lon1-94437-do-user-4831272-0.a.db.ondigitalocean.com",
+  port = 25061,
+  bigint = "numeric"
+)
+```
+
+```{r}
+rm(omni_password, omni_username)
+```
+
+```{r}
+?RPostgres::`dbConnect,PqDriver-method`
+```
+
+```{r}
+dbListTables(db_connection)
+```
+
+```{r}
+dbListFields(db_connection, "employees")
+```
+
+```{r}
+employees <- dbGetQuery(db_connection, "SELECT * FROM employees;")
+```
+
+```{sql, connection = db_connection, output.var = employees_10}
+SELECT *
+FROM employees
+LIMIT 10;
+```
+
+```{r}
+dbIsValid(db_connection)
+```
+
+```{r}
+dbDisconnect(db_connection)
+```
+
+```{r}
+dbIsValid(db_connection)
+```
+

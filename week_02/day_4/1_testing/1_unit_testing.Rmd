@@ -1,0 +1,105 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Unit Testing
+
+```{r}
+is_leap_year <- function(year){
+  
+# add a condition to make sure our function only takes numeric input
+  
+  if(!is.numeric(year)) {
+    stop("Non-numeric input")
+  }
+  
+  if (year %% 100 == 0){
+    if (year %% 400 == 0){
+      return(TRUE)
+    } else{
+      return(FALSE)
+    }
+  } 
+  
+  if (year %% 4 == 0){
+    return(TRUE)
+  } else {
+    return(FALSE)
+  }
+}
+```
+
+# Practice
+Write out what this function is doing, and why it is written in this format (e.g. Why do we test the 100 and 400 years first?)
+
+This function first tests if an input year is divisible by 100 (if year / 100 has no remainder).
+If it is divisible by 100, then it checks if the year is divisible by 400.
+If the year is divisible by 100 and 400, it returns TRUE.
+If the year is divisible by 100, but not 400, it returns FALSE.
+
+It then tests whether the year is divisible by 4 and returns TRUE if it is and FALSE if not.
+
+It checks for divisible by 100 and 400 first because 100 is divisible by 4, but it is not a leap year, so it is weeding out the centenary years which are not leap years.
+
+#The Test That Library
+
+```{r}
+library(testthat)
+```
+
+## Expect_equal
+
+At its simplest. If it works, nothing happens. 
+```{r}
+a <- 11
+expect_equal(a, 10)
+```
+
+```{r}
+test_that("Real leap years return true values", {
+  expect_equal(is_leap_year(2020), TRUE)
+  expect_equal(is_leap_year(2000), TRUE)
+  expect_equal(is_leap_year(1900), FALSE)
+}
+)
+```
+
+
+## Expect error
+
+```{r}
+test_that("Character input returns an error", {
+  expect_error(is_leap_year("year"))
+})
+```
+
+## A failed test
+Which of our tests has failed? expect error TRUE
+Why has it failed? It returned FALSE instead of an error.
+It's showing us that our function can run on a Boolean, so we edit our function to only accept numeric values.
+Why has our other test passed? Because it returns an error (as expected)
+
+```{r}
+test_that("Non-numeric input returns an error", {
+  expect_error(is_leap_year("year"))
+  expect_error(is_leap_year(TRUE))
+})
+```
+
+```{r}
+is_leap_year(TRUE)
+```
+
+# Practice
+
+Write a test that checks whether 2019 and 1900 are correctly identified as not being leap years by our is_leap_year() function.
+
+```{r}
+test_that("non-leap years return false value", {
+          expect_equal(is_leap_year(2019), FALSE)
+          expect_equal(is_leap_year(1900), FALSE)
+  }
+)
+```
+

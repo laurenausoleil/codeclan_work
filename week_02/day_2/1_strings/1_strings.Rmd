@@ -1,0 +1,287 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+```
+
+# Strings basics
+
+```{r}
+string <- "a contraction in double quotes isn't a problem"
+
+problem_string <- 'a contraction in double quotes isn't a problem'
+```
+
+
+```{r}
+# literally empty
+empty_string <- ""
+
+# looks empty
+not_an_empty_string <- "   "
+
+# showing that not_an_empty string is considered a string
+# This is a common problem when dealing with excel data!
+empty_string == not_an_empty_string
+# Returns FALSE
+```
+
+# Manipulating Strings
+
+## Concatenate
+
+```{r}
+str_c("This", "is", "a", "string", sep = " ")
+# "This is a string"
+
+default <- str_c("This", "is", "a", "string")
+# "Thisisastring"
+
+str_c("This", "is", "a", "string", sep = "_")
+# This_is_a_string
+```
+
+### Naming files example
+```{r}
+clinic_id <- "12345_edin"
+date <- "2020_12_19"
+filename <- str_c(clinic_id, date, sep = "_")
+# 12345_edin_2020_12_19
+```
+
+### Handling missing values
+```{r}
+str_c("See", NULL, "how", NULL, "these", NULL, "disappear")
+# See how these disappear
+```
+
+## Casing
+
+```{r}
+pangram <- "The quick brown fox jumps over the lazy dog"
+
+#Upcasing
+pangram %>% 
+  str_to_upper()
+
+#Lowcasing
+pangram %>% 
+  str_to_lower()
+
+# Title-ising every word starts with a capital letter
+pangram %>% 
+  str_to_title()
+
+# Turn string into a sentence
+pangram %>% 
+  str_to_sentence()
+```
+
+## Splitting Strings
+Helps us to create vectors of individual words
+
+```{r}
+unbroken_string <- "We're going to split this string up"
+```
+
+Makes a list
+```{r}
+broken_string_list <- unbroken_string %>% 
+  str_split(" ")
+```
+
+Make a vector
+```{r}
+broken_string_vector <- unbroken_string %>% 
+  str_split(" ") %>% 
+  flatten_chr()
+```
+
+Split on a different separator
+```{r}
+ unbroken_string %>% 
+  str_split("i") %>% 
+  flatten_chr()
+```
+
+Split seperator default
+```{r}
+unbroken_string %>% 
+  str_split("") %>% 
+  flatten_chr()
+```
+
+# Practice
+Concatenate the strings "Manipulating" "strings" "is" "fun!"
+Capitalise the result and save it in a new variable
+Split the formatted string into individual characters
+
+```{r}
+my_string <- str_c("Manipulating", "strings", "is", "fun!", sep =" ") %>% 
+  str_to_upper()
+  
+my_string %>% 
+  str_split("") %>% 
+  flatten_chr()
+```
+
+## Finding substrings
+
+```{r}
+full_string <- "Let's grab a substring from this!"
+full_string
+```
+
+
+```{r}
+# First five
+full_string %>% 
+  str_sub(start = 1, end = 5)
+```
+
+
+```{r}
+#Last five
+full_string %>% 
+  str_sub(start = -5, end = -1)
+```
+
+```{r}
+# using defaults to start at a position and run to the end. Ignores a constant value in a set of strings
+full_string %>% 
+  str_sub(6)
+# reads (start = 6, end = default(-1))
+```
+
+```{r}
+full_string %>% 
+  str_sub(1:5, 10)
+# ? I think this works like str_sub((c(1,2,3,4,5), 10)
+```
+
+```{r}
+full_string %>% 
+  str_sub(1, 5:10)
+```
+
+```{r}
+full_string %>% 
+  str_sub(1:5, 6:10)
+```
+
+# Replacing substrings
+
+```{r}
+original_string <- "We're going to replace some words."
+
+original_string
+```
+
+```{r}
+str_sub(original_string, 1, 22) <- "I've changed"
+
+original_string
+```
+```{r}
+str_sub(original_string, -11) <- "everything!"
+
+original_string
+```
+
+# Numbers in strings
+
+```{r}
+number <- 123456.789
+
+#Changed to a string and by default rounds to one decimal place
+number %>% 
+  format()
+
+#Changing minimum digits to the right of decimal point big = right hand side, small = left hand side
+number %>% 
+  format(nsmall = 2)
+
+# Changing formatting e.g. decimal mark
+number %>% 
+  format(nsmall = 2, decimal.mark = ",")
+
+#Changing format e.g commas
+number %>% 
+  format(big.mark = ",") 
+
+
+```
+
+# Practice
+Concatenate the strings "I" "love" "using" "strings" "in" "reports!"
+Replace the substring "I love using" with "Isn't working with"
+Replace the substring "in reports!" with "really interesting.
+```{r}
+string <- str_c("I", "love", "using", "strings", "in", "reports!", sep = " ")
+
+str_sub(string, 1, 12) <- "Isn't working with"
+string
+
+str_sub(string, -11) <- "really interesting."
+string
+
+# str_length("in reports!")
+
+```
+
+# Working with strings in datasets
+
+```{r}
+spotify_songs <- read_csv("data/spotify_sample.csv")
+```
+
+```{r}
+spotify_songs %>% 
+  mutate(track_name_lower = str_to_lower(track_name)) %>% 
+  select(track_name, track_name_lower)
+```
+
+# 15 Min Task modifying spotify_songs
+
+Upcase the text in the playlist_name column. Overwrite the existing column to store the result.
+```{r}
+spotify_songs <- spotify_songs %>% 
+  mutate(playlist_name = str_to_upper(playlist_name))
+spotify_songs
+```
+
+Lowcase the text in the track_artist column. Store the result in a new column called track_artist_lowcase.
+```{r}
+spotify_songs <- spotify_songs %>% 
+  mutate(
+    track_artist_lowcase = str_to_lower(track_artist)
+  )
+```
+
+Take the first 5 characters of the playlist_id column, and save it in a new column called playlist_start.
+```{r}
+spotify_songs <- spotify_songs %>% 
+  mutate(playlist_start = str_sub(playlist_id, 1, 5))
+```
+
+Take the first 4 characters of the track_album_release_date column and save it in a new column called year.
+```{r}
+spotify_songs <- spotify_songs %>% 
+  mutate(year = str_sub(track_album_release_date, 1, 4))
+```
+
+Format the column danceability column to 2 significant digits (hint, look up ?format for how to use this). Overwrite the column with these values.
+```{r}
+spotify_songs <- spotify_songs %>% 
+  mutate(danceability = format(danceability, digits = 2))
+```
+
+What else can you do to this dataset to practice? Can you work with the numbers? This is open ended - have fun!
+
+```{r}
+# No thanks, I'd rather eat lunch!
+```
+

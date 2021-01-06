@@ -1,0 +1,201 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(stringr)
+library(CodeClanData)
+```
+
+# If statements
+
+Pseudo
+```{r}
+if (expression){
+  do something
+}
+
+if (weather == "sunny") {
+  hang_up_washing()
+}
+```
+
+```{r}
+if (10 < 15) {
+  print("Yes")
+}
+```
+
+```{r}
+if (5 %in% c(1, 4, 8)){
+  print("Yes")
+}
+```
+
+```{r}
+if (5 != 3){
+print("Yes")
+}
+```
+
+```{r}
+x <- 8
+y <- 7
+
+if (x>y){
+  print("Yes")
+}
+```
+
+# Nested Ifs
+
+```{r}
+x <- 5
+y <- 10
+
+if (x %in% c(3, 4, 5)){
+  
+  print("x is in our list")
+  
+  if (x == 5){
+    
+    print("x is exactly 5")
+    
+  }
+  
+} else {
+  
+  print("Start of else statement")
+  
+  if (y %% x == 0){
+    
+    print("x divides y")
+  
+  } else(
+    
+    print("x does not divide Y")
+  )
+  
+  print ("End of else statement")
+```
+
+
+# If Else
+
+pseudo
+```{r}
+if (expression){
+  do something when expression is true
+} else {
+  do something when expression is false
+}
+
+if (weather == "Rain"){
+  wear_wellies()
+} else {
+  wear_trainers()
+}
+```
+
+Build an if else statement so that it prints ‘Yes that divides’ when x is divisible by 2, and prints ‘No that does not divide’ otherwise.
+
+```{r}
+x <- 19
+
+if (x %% 2 == 0){
+  print("Yes that divides by 2")
+} else {
+  print("No that does not divide by 2")
+}
+```
+
+
+
+# For Loops
+
+Pseudo
+```{r}
+for ("item" in list/vector) {
+  do somethething with "item"
+}
+```
+
+```{r}
+weekdays <- c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+
+for(day in weekdays) {
+  print(str_c("The day is ", day))
+}
+```
+
+```{r}
+num <- c(1:5)
+
+for(num in num) {
+  print(num)
+}
+```
+# Nested
+
+```{r}
+for (row_index in 1:5){
+  for (col_index in 1:5){
+    if (row_index == col_index){
+      print(example_matrix[row_index, col_index])
+    }
+   }
+}
+```
+
+# Practice
+Create a nested for loop and if statement combination which loops through the weekdays and prints out the phrase ‘Last weekday!’ once it gets to Friday.
+
+
+```{r}
+weekdays <- c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+
+for (day in weekdays) {
+  if (day == "Friday") {
+    print("Last weekday!")
+  }
+}
+```
+
+
+# Practice
+Using the starwars list from the CodeClanData package, do the following:
+Print the name for every character in the list
+```{r}
+
+for (item in starwars) {
+  print(item$name)
+}
+
+```
+
+Print out the hair_color of every female in the list.
+
+```{r}
+for (item in starwars) {
+  if (item$gender == "female") {
+    print(item$hair_color)
+  }
+}
+```
+
+(Harder) Print out all the URLs for the films of every character that is under 170cm tall.
+
+```{r}
+for (char in starwars) {
+  if (as.double(char$height) > 170) {
+    print(char$films)
+  }
+}
+```
+
+
+```{r}
+str(starwars)
+```
+

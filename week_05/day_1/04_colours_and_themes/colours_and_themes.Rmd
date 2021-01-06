@@ -1,0 +1,104 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+
+pets <- read_csv("data/pets.csv")
+```
+
+
+# Colour gradient
+```{r}
+ggplot(pets, aes(x = weight, y = age, colour = sleep)) +
+  geom_point() +
+  scale_colour_gradient(low = "steelblue2", high = "navyblue")
+```
+
+# Divergent scale or two colour gradient
+
+```{r}
+ggplot(pets, aes(x = weight, y = age, colour = sleep)) +
+  geom_point() +
+  scale_colour_gradient2(midpoint = 15,
+                         low = "red", 
+                         mid = "white",
+                         high = "green")
+```
+
+# Pallates
+
+```{r}
+students <- read_csv("data/students.csv")
+students <- students %>%
+  mutate(school_year = factor(school_year, levels = c("Year 7", "Year 8", "Year 9", "Year 10", "Year 11", "Year 12")))
+```
+
+## Manual Pallates
+```{r}
+ggplot(students) + 
+  aes(x = school_year, fill = superpower) + 
+  geom_bar() +
+  scale_fill_manual(
+    values = c(
+      "Fly" = "coral",
+      "Freeze time" = "seagreen",
+      "Invisibility" = "orange",
+      "Telepathy" = "slateblue"
+    )
+  )
+```
+
+## Using built in palletes
+
+```{r}
+ggplot(students) + 
+  aes(x = school_year, fill = superpower) + 
+  geom_bar() +
+  scale_fill_brewer(palette = "Dark2")
+```
+
+## colorblind
+Avoid green and red
+
+```{r}
+library(ggthemes)
+
+ggplot(students) + 
+  aes(x = school_year, fill = superpower) + 
+  geom_bar() +
+  scale_fill_colorblind()
+```
+
+# Themes
+
+```{r}
+ggplot(students) + 
+  aes(x = school_year, fill = superpower) + 
+  geom_bar() +
+  scale_fill_brewer(palette = "Dark2") +
+  theme_minimal()
+```
+
+## Change font size
+
+```{r}
+ggplot(students) + 
+  aes(x = school_year, fill = superpower) + 
+  geom_bar() +
+  theme(
+    axis.text = element_text(size = 12)
+  )
+```
+
+## Change orientation of labels
+
+```{r}
+ggplot(students) + 
+  aes(x = school_year, fill = superpower) + 
+  geom_bar() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+

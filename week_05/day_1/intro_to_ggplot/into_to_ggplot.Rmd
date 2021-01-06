@@ -1,0 +1,185 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+students <- read_csv("data/students.csv")
+```
+
+```{r}
+head(students)
+```
+
+```{r}
+ggplot(students) +
+  aes(x = superpower) +
+  geom_bar()
+```
+
+```{r}
+# colour the bars not depending on a variable
+ggplot(students) +
+  aes(x = superpower) +
+  geom_bar(fill = "light blue")
+```
+
+```{r}
+# colour the bars depending on a variable
+ggplot(students) +
+  aes(x = superpower, fill = school_year) +
+  geom_bar()
+```
+
+```{r}
+# have the bars side by side, not stacked
+ggplot(students) +
+  aes(x = superpower, fill = school_year) +
+  geom_bar(position = "dodge")
+```
+
+```{r}
+# show proportion of people in each year who want each power
+ggplot(students) +
+  aes(x = superpower, fill = school_year) +
+  geom_bar(position = "fill")
+```
+
+```{r}
+count_data <- students %>% 
+  group_by(superpower, school_year) %>% 
+  summarise(counts = n())
+```
+
+# Plot existing counts 
+## tell it not to change anything
+```{r}
+ggplot(count_data) +
+  aes(x = superpower, y = counts, fill = school_year) +
+  geom_bar(stat = "identity")
+```
+
+## use a different shape
+
+```{r}
+ggplot(count_data) +
+  aes(x = superpower, y = counts, fill = school_year) +
+  geom_col()
+```
+
+# Labels
+
+```{r}
+ggplot(students) +
+  aes(x = superpower, fill = school_year) +
+  geom_bar() +
+  labs(
+    x = "\n Superpower",
+    y = "Number of School Children \n",
+    title = "Preferred superpower by school year",
+    subtitle = "Data from around the world \n",
+    fill = "School Year \n"
+  )
+```
+
+# Task
+
+```{r}
+olympics_overall_medals <- read_csv("data/olympics_overall_medals.csv")
+```
+
+```{r}
+top_10 <- olympics_overall_medals %>%
+  filter(season == "Summer", medal == "Gold") %>%
+  arrange(desc(count)) %>%
+  top_n(10)
+```
+
+Create an informative plot that plots the count of medals by team. Write down an explanation of what the plot shows.
+
+```{r}
+ggplot(top_10) +
+  aes(x = reorder(team, -count), y = count) +
+  geom_col() +
+  labs(
+    x = "Country",
+    title = "Number of gold medals won at the summer Olympics",
+    subtitle = "The top 10 countries winning gold medals at summer Olympics"
+  ) +
+  theme(axis.text.x = element_text(angle = -90))
+```
+
+# Layers
+
+```{r}
+library(janitor)
+data("ChickWeight")
+chick_weight <- clean_names(ChickWeight)
+head(chick_weight)
+rm(ChickWeight)
+```
+
+## Chick weights over time
+
+```{r}
+ggplot(chick_weight) +
+  aes(x = time, y = weight, colour = diet) +
+  geom_line(aes(group = chick), alpha = 0.2) +
+#  geom_point(alpha = 0.3) +
+  geom_smooth() +
+  labs(
+    title = "Weight of chicks by diet type over time \n"
+  )
+```
+
+#Task
+
+Task 1 - 10 mins
+Using the students dataset:
+Use geom_point to make a scatter graph, with the height of students on the x-axis and their reaction time of the y axis.
+Make all the points blue. For geom_bar, the colour of the bar is controlled by fill, but for geom_point the colour of the points are controlled by colour.
+
+
+```{r}
+ggplot(students) +
+  aes(x = height_cm, y = reaction_time) +
+  geom_point(colour = "blue")
+```
+Make the colour of the points depend on the superpower the student wishes they had.
+Change the position of the plot to jitter (using the position argument in geom_point). What do you see?
+Jitter spreads out dots which cluster so you can see each point even if they are identical (or overlayed)
+
+Write down what the graph tells you overall.
+```{r}
+ggplot(students) +
+  aes(x = height_cm, y = reaction_time, colour = superpower) +
+  geom_point(position = "jitter") +
+  labs(title = "Scatter graph comparing student heights to their reaction time",
+       subtitle = "Also showing student's preferred superpower")
+```
+
+Task 2 - 10 mins
+Let’s load the dataset pets:
+pets <- read_csv("data/pets.csv")
+Create a labelled scatter plot, of pet age vs. weight, with the following 5 mapping/aesthetics. For items 3-5 you may want to look at the help file of ?geom_point and read about different aesthetics:
+We want age of the x-axis and weight on the y axis
+We want the points the be different colours depending on the gender of the pet
+We want different shapes depending on the type of animal
+We want all the points to be bigger than normal (size 4).
+We also want labels with the pets names next to every point
+
+```{r}
+pets <- read_csv("data/pets.csv")
+```
+
+```{r}
+ggplot(pets) +
+  aes(x = age, y = weight, colour = sex, label = name) +
+  geom_point(aes(shape = animal, size = 4)) +
+  geom_text(aes(label = name), hjust = -0.4)
+```
+```{r}
+ggsave("myplot.png")
+```
+

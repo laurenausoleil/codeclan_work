@@ -1,0 +1,163 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Tidy data Format
+
+## 3 Rules
+
+1. One variable = One column
+2. One observation = One row
+3. One value = One cell
+
+Sounds easy, but it can be hard to define one variable or one observation.
+
+In a survey, every question is one variable, every questionee is one observation
+
+## Long format
+
+## Wide format
+
+# How to
+
+```{r}
+library(tidyverse)
+```
+```{r}
+subject_hr <- tibble( name = c("SUBJ01","SUBJ02","SUBJ03"), 
+  hr_am = c(68,72,68), 
+  hr_pm = c(58,89,52))
+```
+
+
+Pivot longer takes data, columns you want to pivot, variable name for new columns and value to put in new column.
+
+It moves items from the columns you specified, and takes the names of these columns into a new variable specified by variable name for new column and the values from these columns into a new variable whose nam is specified by values_to.
+```{r}
+subject_hr %>% 
+  pivot_longer(
+    col = c(hr_am, hr_pm),
+    names_to = "measurement_time",
+    values_to = "heart_rates"
+)
+```
+
+```{r}
+income <- tibble(religion = c("Agnostic","Atheist","Buddhist", "Catholic"), 
+  X10k = c(12,25,3,75), 
+  X10k_to_20k = c(34,14,6,60),
+  X20k_to_30k = c(45,22,10,110))
+```
+
+```{r}
+income %>% 
+  pivot_longer(
+    col = c(X10k, X10k_to_20k, X20k_to_30k),
+    names_to = "income_level",
+    values_to = "count"
+  )
+```
+Pivot wider takes the values in a cell and turn them into new variable names.
+
+# Splitting a value in one cell across two columns
+```{r}
+messy_orders <- tibble( name = c("Joe Bloggs","Jane Smith","Penny Jones"), 
+  order_info = c("XY7282/29-06-19","LO0182/15-03-19","AS6812/04-06-19"), 
+  order_amount = c(58.00,125.00,75.25))
+```
+
+Separate something from one cell into two columns
+```{r}
+clean_orders <- messy_orders %>% 
+  separate(
+    col = order_info,
+    into = c("order_id", "order_date"),
+    sep = "/"
+  )
+```
+
+Unite
+```{r}
+clean_orders %>% 
+  unite(
+    col = "order_info",
+    c(order_id, order_date),
+    sep =  "/"
+  )
+```
+
+# Practice
+
+```{r}
+hospitals <- read_csv("hospitals93to98.csv")
+```
+
+```{r}
+hospitals %>% 
+# Separate column IcdChapter
+  separate(
+    col = IcdChapter,
+    into = c("icd_id", "icd_chapter"),
+    sep = "\\."
+  ) %>% 
+# Pivot years to long format
+  pivot_longer(
+    cols = FY1993:FY1998,
+    names_to = "year",
+    values_to = "number_of_visits"
+  ) %>% 
+  
+#Pivot field to wide format
+  pivot_wider(
+    names_from = Field,
+    values_from = number_of_visits
+  )
+```
+
+# Mini Lab Practice
+
+```{r}
+country_data <- read_csv("country_data.csv")
+```
+
+
+```{r}
+country_data %>% 
+# Deselect X1, a column which just includes the number of the row (as this will impact pivotting.)
+  select(-X1) %>% 
+# Seperate the number from the name of the country in the original column 'country'
+  separate(
+    col = country,
+    into = c("country_number", "country"),
+    sep = fixed("\\.")
+  ) %>% 
+# Pivot the multiple variables for year into one variable containing year.
+  pivot_longer(
+    cols = (Y1999 : Y2001),
+    names_to = "year",
+    values_to = "number"
+  ) %>% 
+# Pivot the 'type' column which currently contains two variables (populations, cases)
+   pivot_wider(
+    names_from = type,
+    values_from = number
+  ) %>%
+# Unite the country code and country number to make one country code.
+  unite(
+    col = "country_code",
+    c(code_letter, code_numb),
+    sep = ""
+  ) %>% 
+  # remove 'country number' as it replicates data in our new country code column
+  select(-country_number) %>% 
+  # Rename our years with a numeric value
+  mutate(
+    year = case_when(
+      year == "Y1999" ~ 1999,
+      year == "Y2000" ~ 2000,
+      year == "Y2001" ~ 2001
+    )
+  ) %>% view
+```
+
