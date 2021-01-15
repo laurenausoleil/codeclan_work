@@ -1,0 +1,159 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(janitor)
+```
+
+```{r}
+jobs <- read_csv("data/TyrellCorpJobs.csv") %>% 
+  clean_names()
+```
+
+# Range
+the difference between maximum and minimum value
+
+```{r}
+# Range function calculates maximum and minimum values
+jobs %>% 
+  summarise(range_salary = range(salary))
+```
+
+```{r}
+jobs %>% 
+  summarise(
+    range = max(salary) - min(salary)
+  )
+```
+
+```{r}
+jobs %>% 
+  ggplot() +
+  aes(x = salary) +
+  geom_histogram(col = "white", bins = 25) +
+  facet_wrap(~ position)
+```
+
+Outlier can greatly affect range
+```{r}
+jobs %>% 
+  group_by(position) %>% 
+  summarise(range = max(salary) - min(salary))
+```
+
+# Interquartile Range
+
+A method for trimming outliers
+
+```{r}
+jobs %>% 
+  group_by(position) %>% 
+  summarise(
+    Q1 = quantile(salary, 0.25),
+    Q2 = quantile(salary, 0.5),
+    Q3 = quantile(salary, 0.75),
+    IQR = Q3 - Q1
+  )
+```
+
+# Five Number Summary
+
+Min, Q1, median, Q3, Max of a distribution
+
+```{r}
+library(skimr)
+```
+
+```{r}
+jobs %>% 
+  select(-x1) %>% 
+  group_by(position) %>% 
+  skim()
+```
+
+# Box plot
+A visualisation of a 5 number summary.
+Whiskers are 1.5 times interquartile range. Anything outwith the whiskers is an outlier
+
+```{r}
+set.seed(42)
+distribution_1 <- tibble(
+  y = append(rnorm(n = 100, mean = 5, sd = 10), rnorm(n = 200, mean = 5, sd = 1))
+)
+distribution_2 <- tibble(
+  y = runif(n = 1000, min = -30, max = 30)
+)
+```
+
+Investigate and comment on the centrality and spreads of distribution_1 and distribution_2 produced by the following function calls.
+Use geom_boxplot() and skim() first
+Next, plot histograms to confirm your descriptions.
+[Don’t worry about what the functions generating distribution_1 and distribution_2 are doing]
+```{r}
+distribution_1 %>% 
+  skim()
+```
+
+
+```{r}
+distribution_1 %>% 
+  ggplot() +
+  aes(y = y) +
+  geom_boxplot()
+```
+
+Left skewed, quite a lot of outliers, relatively dense range in interquartile range.
+
+```{r}
+distribution_2 %>% 
+  skim()
+```
+
+```{r}
+distribution_2 %>% 
+  ggplot() +
+  aes(y = y) +
+  geom_boxplot()
+```
+
+No outliers, not skewed, larger IQR, smaller range
+
+```{r}
+library(e1071)
+heavily_right_skewed <- read_csv("data/heavily_right_skewed.csv")
+```
+
+```{r}
+heavily_right_skewed %>% 
+  summarise(skewness = skewness(x, type = 1))
+```
+
+```{r}
+heavily_right_skewed %>%
+  ggplot(aes(y = x)) +
+  coord_flip() +
+  geom_boxplot()
+```
+
+# Variance
+The lower the number the lower the spread
+
+```{r}
+jobs %>% 
+  group_by(position) %>% 
+  summarise(variance = var(salary))
+```
+
+# Standard Deviation
+Square root of variance.
+The lower the number, the lower the spread
+
+```{r}
+jobs %>% 
+  group_by(position) %>% 
+  summarise(sd = sd(salary))
+```
+

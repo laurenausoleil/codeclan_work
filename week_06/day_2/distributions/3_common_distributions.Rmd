@@ -1,0 +1,157 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+```
+
+# Uniform Distributions
+
+```{r}
+dice <- tibble(
+    x = 1:6,
+    f_x = replicate(6, 1/6)
+  ) %>%
+  mutate(F_x = cumsum(f_x))
+dice %>%
+  ggplot(aes(x = x, y = F_x)) +
+  geom_step() +
+  xlab("number rolled on die") + ylab("probability") +
+  scale_x_continuous(breaks = 1:6) +
+  scale_y_continuous(breaks = seq(0, 1, 0.1)) +
+  ylim(0, 1) 
+```
+
+```{r}
+brain_breaks <- tibble(
+  l = seq(4, 23, by = 0.001),
+  f_l = dunif(x = l, min = 5, max = 22)
+)
+brain_breaks %>%
+  ggplot(aes(x = l, y = f_l)) +
+  geom_line() +
+  ylim(0, 0.075) + 
+  xlab("l (minutes)") + ylab("f_l (probability density)") +
+  geom_ribbon(aes(ymin = 0, ymax = ifelse(l >= 8.4 & l <= 10.751, f_l, 0)), fill = "red", alpha = 0.6)
+```
+
+```{r}
+brain_breaks <- brain_breaks %>%
+  mutate(F_l = punif(q = l, min = 5, max = 22))
+brain_breaks %>%
+  ggplot(aes(x = l, y = F_l)) +
+  geom_line()
+```
+
+# Probability of a break between a range lengths
+
+Probabilty of the longer one minus the probability of the shorter one
+
+```{r}
+punif(q = 10.751, min = 5, max = 22) - punif(q = 8.4, min = 5, max = 22)
+```
+
+# Normal Distributions
+
+```{r}
+three_norms <- tibble(
+  x =  seq(0, 20, 0.1),
+  f1_x = dnorm(x = x, mean = 10, sd = 1), 
+  f2_x = dnorm(x = x, mean = 10, sd = 2),
+  f3_x = dnorm(x = x, mean = 10, sd = 3)
+)
+three_norms %>%
+  ggplot() +
+  geom_line(aes(x = x, y = f2_x), col = "black") +
+  geom_line(aes(x = x, y = f1_x), col = "red") +
+  geom_line(aes(x = x, y = f3_x), col = "blue")
+```
+
+```{r}
+library(janitor)
+```
+
+```{r}
+jobs <-read_csv("data/TyrellCorpJobs.csv") %>% 
+  clean_names()
+```
+
+```{r}
+accounts_salary_stats <- jobs %>% 
+  filter(position == "Accounting") %>% 
+  summarise(
+    num = n(),
+    mean = mean(salary),
+    sd = sd(salary)
+  )
+
+accounts_salary_stats
+```
+
+```{r}
+jobs %>% 
+  filter(position == "Accounting") %>% 
+  ggplot() +
+  aes(x = salary) +
+  geom_histogram(aes(y = ..density..), col = "white", bins = 25) +
+  stat_function(
+    fun = dnorm,
+    args = list(
+      mean = accounts_salary_stats$mean,
+      sd = accounts_salary_stats$sd
+    ),
+    col = "steel blue"
+  )
+```
+
+# Z score
+how many standard deviations is this value from the mean?
+```{r}
+management_scaled <- jobs %>% 
+  filter(position == "Management") %>% 
+  mutate(z_salary = scale(salary)) %>% 
+  arrange(desc(z_salary))
+
+management_scaled
+```
+
+```{r}
+management_scaled %>% 
+  filter(!between(z_salary, left = -3, right = 3))
+```
+z of more than 3 standard deviations positive or negative means something we want to explore and understand. Is it an error?
+
+# Cumulative Distribution for normal distribution
+The empirical 3 sigma rule.
+The 68, 95, 99.7 rule
+
+```{r}
+standard_normal <- tibble(
+  z = seq(from = -4, to = 4, by = 0.01),
+  f_z = dnorm(x = z)
+)
+standard_normal %>%
+  ggplot(aes(x = z, y = f_z)) +
+  geom_line()
+```
+
+```{r}
+pnorm(q = 0)
+```
+
+Chance of something lying within 1 standard deviation
+```{r}
+pnorm(q = 1) - pnorm(q = -1)
+```
+
+Chance of something lying within 2 standard deviation
+```{r}
+pnorm(q = 2) - pnorm(q = -2)
+```
+
+Chance of something lying within 3 standard deviation - 99.7%
+```{r}
+pnorm(q = 3) - pnorm(q = -3)
+```

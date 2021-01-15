@@ -1,0 +1,250 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Single Step Experiment
+e.g. one roll of our two die
+
+
+```{r}
+# set up the sample and event spaces again
+library(prob)
+library(tidyverse)
+
+# get all possible combos of 2 die rolls
+s <- rolldie(2)
+size_s <- nrow(s)
+size_s
+```
+
+```{r}
+# find when the two separate die rolls total 7
+total_seven <- s %>%
+  dplyr::filter(X1 + X2 == 7)
+
+# how many combos exist
+size_total_seven <- nrow(total_seven)
+size_total_seven
+```
+
+```{r}
+# using this to find a probability
+
+prob_total_seven <- size_total_seven / size_s
+prob_total_seven
+```
+
+# Multiplie step experiments
+e.g. throw one die, see the result, then flip a coin
+
+```{r}
+# set up one roll of a dice
+s_die <- rolldie(1)
+
+# set up one toin coss
+s_coin <- tosscoin(1)
+
+# merge them together
+# The merge() function takes a row from s_die and associated it with each row in s_coin.
+s_total <- merge(s_die, s_coin)
+s_total
+```
+
+# Permutations 
+
+```{r}
+library(gtools)
+```
+
+```{r}
+# create vector of choices contains ten employees, n = 10. 
+employees <- c("Alice", "Bob", "Carole", "David", "Elaine", "Fred", "Gabra", "Hua", "Inigo", "Hugo")
+
+# Choose three at a time, r = 3
+# Don't replace an employee once chosen: repeats.allowed = FALSE
+seniors <- as_tibble(
+  permutations(
+    # n = number of options
+    n = 10, 
+    # r = how many people we want in our outcome
+    r = 3, 
+    # v = vector of options
+    v = employees, 
+    # more than one employee can't fill the same position therefore no repetition
+    repeats.allowed = FALSE
+  )
+)
+```
+
+```{r}
+# rename the variables in seniors to something better
+seniors <- seniors %>%
+  rename(
+    CEO = V1,
+    CTO = V2,
+    COO = V3
+  )
+
+# let's see what the seniors matrix looks like
+seniors
+```
+
+What is the probability of Alice being selected as CEO and Bob being selected as CTO, if the selection process is random?
+
+```{r}
+# first get the event space
+alice_CEO_bob_CTO <- seniors %>%
+  filter(CEO == "Alice", CTO == "Bob")
+alice_CEO_bob_CTO
+```
+```{r}
+prob_alice_CEO_bob_CTO <- nrow(alice_CEO_bob_CTO) / nrow(seniors)
+prob_alice_CEO_bob_CTO
+```
+
+# Task
+
+Task - 10 mins A licence plate begins with three letters from a possible set of A, B, C, D, E. How many permutations are possible if repetition of letters is:
+
+not allowed [Hint - how many letters are possible for first position, how many for second if one is ‘used up’, how many for third if two are ‘used up’?]
+
+
+```{r}
+# variable with the possibile letters
+poss_letters <- c("A", "B", "C", "D", "E")
+
+# find permutations with repeat = false
+
+poss_licence_plate_no_rep <- as_tibble(
+  permutations(
+    n = length(poss_letters),
+    # how many letters we want
+    r = 3,
+    v = poss_letters,
+    repeats.allowed = FALSE
+  )
+)
+nrow(poss_licence_plate_no_rep)
+```
+
+
+allowed [Hint - all that changes from last answer is that letters don’t get ‘used up’]
+
+```{r}
+poss_licence_plate_with_rep <-
+  as_tibble(
+    permutations(
+      n = length(poss_letters),
+      r = 3,
+      v = poss_letters,
+      repeats.allowed = TRUE
+    )
+  )
+nrow(poss_licence_plate_with_rep)
+```
+
+Harder Task - 10 mins A random four digit pin is set on a gym lock. What is the probability that no digits are repeated?
+```{r}
+num <- c(0:9)
+
+# Define event space for locker combo
+s_locker <- as_tibble(
+  permutations(
+    n = length(num),
+    r = 4,
+    v = num,
+    repeats.allowed = TRUE
+  )
+)
+
+# Define event space for locker combo with no repeats
+s_locker_no_rep <- as_tibble(
+  permutations(
+    n = length(num),
+    r = 4,
+    v = num,
+    repeats.allowed = FALSE
+  )
+)
+
+prob_locker_no_rep <- nrow(s_locker_no_rep) / nrow(s_locker)
+prob_locker_no_rep
+
+```
+
+It is as likely to contain repeats as not.
+
+# Combinations
+
+```{r}
+# Set up deck
+cards <- cards(jokers = FALSE)
+
+cards <- cards %>% 
+  mutate(card = str_c(rank, str_sub(suit, start = 1, end = 1))) %>%
+  pull(card)
+```
+
+```{r}
+# find the number of combinations for a 5 card hand
+
+five_card_hands <-
+  combinations(
+    n = 52,
+    r = 5,
+    v = cards,
+    repeats.allowed = FALSE
+  )
+
+nrow(five_card_hands)
+```
+
+If all we are interested in is the number of combinations(), the choose() function gives us this much more quickly:
+
+```{r}
+num_5_card_hands <- choose(52, 5)
+num_5_card_hands
+```
+
+# Task
+Given a lottery with 50 numbers drawn in lots of 6, how many possible winning combinations are there?
+If you buy 10 tickets, each with a different set of numbers, what is your probability of winning?
+Remember, order doesn’t matter in lottery draws, and no repetition is allowed (once a numbered ball pops out the machine, it isn’t put back in).
+
+```{r}
+lottery_num <- c(1:50)
+
+s_lottery_draw <- choose(50, 6)
+```
+
+```{r}
+prob_win_ten_tickets <- 
+  10/s_lottery_draw
+```
+
+# Task
+I have five flavours of ice cream to choose from and a bowl that can hold three scoops. How many different variations in bowls of ice cream can I have assuming:
+
+
+```{r}
+flavours <- c("vanilla", "chocolate", "raspberry", "strawberry", "pistachio")
+```
+
+##Each scoop must be a different flavour
+
+```{r}
+choose(5, 3)
+```
+
+
+## I can repeat flavours if I wish?
+
+```{r}
+nrow(
+  as_tibble(
+    combinations(n = 5, r = 3, v = flavours, repeats.allowed = T)
+  )
+)
+```
+

@@ -1,0 +1,270 @@
+---
+title: "R Notebook"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r}
+library(prob)
+library(tidyverse)
+```
+
+# Uniform Probability distribution
+Where every outcome has the same likelihood of occuring. e.g. where our coins are not biased.
+
+```{r}
+s_three_coins <- tosscoin(3)
+s_three_coins
+```
+
+```{r}
+s_three_coins <- s_three_coins %>%
+  mutate(label = str_c(toss1, toss2, toss3, sep = "")) %>%
+  mutate(prob = 1 / n())
+
+s_three_coins %>%
+  ggplot(aes(x = label, y = prob)) +
+  geom_col() + 
+  xlab("coin toss result") + 
+  ylab ("prob of each outcome")
+```
+
+# Plot number of heads
+```{r}
+s_three_coins <- s_three_coins %>% 
+  mutate(
+    num_heads = rowSums(. == "H")
+  )
+
+prob_num_heads <- s_three_coins %>% 
+  group_by(num_heads) %>% 
+  summarise(prob = sum(prob))
+
+prob_num_heads %>% 
+  ggplot() +
+  aes(x = num_heads, y = prob) +
+  geom_col() +
+  xlab("Number of heads") +
+  ylab("Probability")
+```
+
+# Measures of Centre
+
+```{r}
+library(janitor)
+library(lubridate)
+```
+
+```{r}
+air_con_sales <- read_csv("data/AirConSales.csv") %>% 
+  clean_names() %>% 
+  mutate(date = as_date(date, format = "%m/%d/%Y"))
+```
+
+# Find the distribution of units sold per day
+
+```{r}
+# col 2 = frequency e.g. 9 days where 3 units were sold
+# Col 3 equals relative frequency: the proportion of days where 3 units were sold
+sales_frequency_table <- air_con_sales %>% 
+  tabyl(units_sold)
+
+```
+
+# Plot distribution of air con unit sales
+```{r}
+sales_frequency_table %>% 
+  ggplot() +
+  aes(x = units_sold, y = percent) +
+  geom_col()
+```
+
+# Summarising distribution
+
+## Mean
+
+```{r}
+air_con_sales %>% 
+  summarise(mean_daily_sales = mean(units_sold))
+```
+
+## Median
+The value where half of values are smaller than and half of the values are bigger than it
+```{r}
+air_con_sales %>% 
+  summarise(median_daily_sales = median(units_sold))
+```
+
+## Mode
+The value which occurs most frequently
+```{r}
+get_mode <- function(data){
+  tabled_data <- table(data)
+  table_names <- names(tabled_data)
+  return( table_names[tabled_data == max(tabled_data)] )
+}
+```
+
+```{r}
+air_con_sales %>% 
+  summarise(mode_daily_sales = get_mode(units_sold))
+```
+
+# Effects of outliers
+
+```{r}
+air_con_sales %>% 
+  summarise(
+    mean_daily_sales = mean(units_sold),
+    median_daily_sales = median(units_sold),
+    mode_daily_sales = get_mode(units_sold)
+  )
+```
+
+Outliers have significant impact on mean value
+```{r}
+# Remove outlier
+air_con_sales %>% 
+  filter(units_sold < 43) %>% 
+  summarise(
+    mean_daily_sales = mean(units_sold),
+    median_daily_sales = median(units_sold),
+    mode_daily_sales = get_mode(units_sold)
+  )
+```
+
+# Desciribing disributions
+
+## Unimodal and Bimodal Distributions
+Uniform - flat - no peaks
+Unimodal - one most common value e.g. one peak in distribution
+Bimodal - exactly two peaks
+Multimodal - more than two peaks
+
+```{r}
+unimodal <- read_csv("data/unimodal.csv")
+bimodal <- read_csv("data/bimodal.csv")
+```
+
+```{r}
+unimodal %>% 
+  ggplot() +
+  aes(x = x) +
+  geom_histogram(col = "white", bins = 20) 
+```
+
+```{r}
+bimodal %>% 
+  ggplot() +
+  aes(x = x) +
+  geom_histogram(col = "white", bins = 20)
+```
+
+# Measures of centre with bimodal or multimodal data
+In the bimodal data set, the mean and median actually fall around 12, which is in fact a low point in the data.
+
+```{r}
+bimodal %>% 
+  summarise(
+    mean = mean(x),
+    median = median(x)
+  )
+```
+
+# Skewness
+Skewed: The peak falls to the left or right of the centre
+Skewness: a description of how skewed the data is, by looking at the relationship between mean and median
+Left-skewed, the tail is on the left.
+
+```{r}
+left_skewed <- read_csv("data/leftskew.csv")
+```
+
+```{r}
+left_skewed %>% 
+  summarise(
+    mean = mean(x),
+    median = median(x)
+  )
+```
+
+```{r}
+left_skewed %>% 
+  ggplot() +
+  aes(x = x) +
+  geom_histogram(col = "white", bins = 20)
+```
+# Calculating mode with continuous data
+```{r}
+left_skewed %>% 
+  mutate(binned = cut(x, breaks = 20)) %>% 
+  summarise(modal_value = get_mode(binned))
+```
+
+### Pattern for left skewed data
+Mean < Median < Mode
+
+# Right skewed
+Try the same process again for the right-skewed data below:
+right_skewed <- read_csv("data/rightskew.csv")
+Visualise the distribution.
+What order do the mean, median and mode fall in for right-skewed data?
+
+```{r}
+right_skewed <- read_csv("data/rightskew.csv")
+```
+
+```{r}
+right_skewed %>% 
+  ggplot() +
+  aes(x = x) +
+  geom_histogram(col = "white", bins = 20)
+```
+
+```{r}
+right_skewed %>% 
+  mutate(binned = cut(x, breaks = 20)) %>% 
+  summarise(
+    mean = mean(x),
+    median = median(x),
+    mode = get_mode(binned)
+  )
+```
+
+Mean > Median > Mode
+
+# Measuring skew
+
+```{r}
+library(e1071)
+```
+
+```{r}
+left_skewed %>% 
+  summarise(skewness = skewness(x, na.rm = T, type = 1))
+```
+Left skewness measured with a negative number
+Right skewness measured with a positive number.
+The greater the value of the number, the more skewed the data
+0 > 0.5 - not skewed
+0.5 > 1 - moderately skewed
+1 > - highly skewed
+
+```{r}
+right_skewed %>% 
+  summarise(skewness = skewness(x, na.rm = T, type =1))
+```
+
+```{r}
+air_con_sales %>% 
+  summarise(skewness = skewness(units_sold, na.rm = T, type = 1))
+```
+
+Impact of outliers on skewness
+```{r}
+air_con_sales %>% 
+  filter(units_sold < 43) %>% 
+  summarise(skewness = skewness(units_sold, na.rm = T, type = 1))
+```
+

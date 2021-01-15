@@ -1,0 +1,156 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(janitor)
+library(infer)
+```
+
+```{r}
+books <- read_csv("data/books.csv") %>% clean_names()
+```
+
+# Cleaning 
+```{r}
+books_tidy_2020 <- books %>% 
+  filter(!is.na(average_rating)) %>% 
+  rename(num_pages = number_num_pages)
+```
+
+# Visualise
+
+```{r}
+books_tidy_2020 %>% 
+  ggplot()+
+  aes(x = average_rating) +
+  geom_histogram(col = "white")
+```
+Not normal,  outliers at 0 and 5 (probably to do with num ratings). Poss normal without outliers. right skewed heavily with outliers and slightly without.
+
+```{r}
+books_tidy_2020 %>% 
+  ggplot()+
+  aes(x = average_rating) +
+  geom_boxplot()
+```
+
+# Hypothesis Test
+
+Given that mean average rating in 2016 was 3.93.
+With a 11000 sample of 2020 data, does the population mean average rating in 2020 differ from 3.93.
+
+The mean average_rating for books in the Goodreads database in 2016 was 3.93. Now, we have taken this current sample of books from the database, and we want to know if the mean average_rating for 2020 database differs significantly from the 2016 value?
+
+Two mutually exclusive hypotheses - only one can be true.
+Our hypotheses are exhaustive - one of our hypothesis must be true, there is no other possible.
+
+Null hyoptheses normally assume that there is no change or no effect.
+e.g. the 2020 population mean will not differ from the 2016 population mean.
+
+## H0, Null hypothesis (H naught):
+2020 population average == 2016 population average == 3.93
+
+## Ha, The alternative hypothesis:
+2020 population average != 2016 population average != 3.93.
+
+# 1. Calculate the sample mean average rating for 2020
+
+```{r}
+observed_stat <- books_tidy_2020 %>% 
+  summarise(mean_rating = mean(average_rating))
+```
+
+This is similar to the 2016 popn mean. Our hypothesis testing helps us to understand if this is significant.
+
+# 2. Null distribution
+What would the distribution look like if null hypothesis were true?
+
+mu is the population mean average rating
+
+```{r}
+# This creates an imaginary distribution - what would it look like if the null hypothesis were true?
+null_distribution <- books_tidy_2020 %>% 
+  specify(response = average_rating) %>% 
+  hypothesise(null = "point", mu = 3.93) %>%
+  generate(reps = 10000, type = "bootstrap") %>%
+  calculate(stat = "mean")
+```
+
+# Visualise the null hypothesis distribution and the p value
+
+P value is:
+assuming that the null hypothesis is true, what is the probability of observing a value at least as extreme as our observed statistic?
+
+```{r}
+null_distribution %>% 
+  visualise(bins = 30) +
+  shade_p_value(obs_stat = observed_stat$mean_rating,
+                direction = "both")
+```
+
+# Calculate the p value
+
+```{r}
+p_value <- null_distribution %>% 
+  get_p_value(obs_stat = observed_stat$mean_rating,
+              direction = "both")
+
+p_value
+```
+
+Because the p value is lower than the alpha (0.02 < 0.05), we can reject the null hyopthesis based on this sample and accept the alternative hypothesis.
+
+We infer from this sample that the population mean average rating in 2020 is likely to be statistically different from the average rating in 2016.
+
+# Task
+## Do books written in Spanish have a mean(average_rating) significantly less than 3.96?
+
+# Set alpha, H0 and Ha
+alpha = 0.05
+H0: Spanish books average rating => 3.96.
+Ha: mu < 3.96
+For our test:
+H0: mu = 3.96
+
+
+# Get sample - books in Spanish
+```{r}
+spanish_books_2020 <- books_tidy_2020 %>% 
+  filter(language_code == "spa")
+```
+
+# Observed statistic
+```{r}
+observed_statistic <- spanish_books_2020 %>% 
+  summarise(mean_rating_spanish = mean(average_rating)) %>% 
+  pull(mean_rating_spanish)
+```
+
+# Create a null distribution
+```{r}
+sp_null_dist <- spanish_books_2020 %>% 
+  specify(response = average_rating) %>% 
+  hypothesise(null = "point", mu = 3.96) %>% 
+  generate(reps = 5000, type = "bootstrap") %>% 
+  calculate(stat = "mean")
+```
+
+# Visualise H0 distribution and observed stat
+```{r}
+sp_null_dist %>% 
+  visualise(bins = 30) +
+  shade_p_value(obs_stat = observed_stat,
+                direction = "less")
+  
+```
+
+# Calculate p value
+```{r}
+get_p_value(x = sp_null_dist, obs_stat = observed_stat, direction = "less")
+```
+
+P value = 0.086. We fail to reject null hypothesis.
+We don't have enough evidence to draw conclusions about the average ratings of Spanish books from this dataset

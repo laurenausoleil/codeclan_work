@@ -1,0 +1,233 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Two sample tests with independent samples
+
+```{r}
+library(tidyverse)
+library(janitor)
+library(infer)
+
+nice <- read_csv("data/nice.csv")
+algarve <- read_csv("data/algarve.csv")
+```
+
+# Bind and tidy data
+```{r}
+apart_prices <- bind_rows(nice,algarve, .id = "location") %>%
+                mutate(location = ifelse(location == "1", "nice", "algarve")) %>% 
+                select(-X1)
+head(apart_prices)
+```
+
+# Visualise
+```{r}
+apart_prices %>% 
+  ggplot() +
+  aes(x = location, y= price) +
+  geom_boxplot()
+```
+# Generate the null distribution
+What would it look like if there was no difference in prices between each location.
+If we shuffle the prices and labels for both our samples.
+```{r}
+null_distribution <- apart_prices %>% 
+  specify(response = price, explanatory = location) %>% 
+  hypothesise(null = "independence") %>% 
+  # permute type generates permutations of our price and location labels
+  generate(reps = 1000, type = "permute") %>% 
+  calculate(stat = "diff in means", order = c("algarve", "nice"))
+
+head(null_distribution)
+```
+
+# Calculate observed statistic
+```{r}
+observed_stat <- apart_prices %>% 
+  specify(price ~ location) %>% 
+  calculate(stat = "diff in means", order = c("algarve", "nice"))
+
+observed_stat
+```
+
+# Visualise null distribution and observed stat
+```{r}
+null_distribution %>% 
+  visualise(bins = 30) +
+  shade_p_value(obs_stat = observed_stat, direction = "greater")
+```
+
+# Calculate p value
+The probability of getting our observed value if there is no difference between prices depending on location
+```{r}
+get_p_value(null_distribution, obs_stat = observed_stat, direction = "greater")
+```
+
+There is a 0.1% chance of getting our observed statistic if the null hypothesis were true.
+As it is incredibly unlikely to have returned the observed value if the null hypothesis were true, this gives us a reasonable indication that we can safely reject the null hypothesis.
+
+We reject H0 and conclude that we have enough evidence in our data to indicate that the average price for a holiday rental in the Algarve is statistically greater than that in Nice.
+
+# Task
+We have two more datasets for similar apartment lets in Corfu and Florence. 
+
+Frame and perform an independent two-sample test to answer the following question:
+‘On average, is the price of 2-bedroom, 14-day holiday apartment lets in Florence significantly lower than that of comparable lets in Corfu?’
+Choose α and frame your hypotheses before you see the data
+You will need to format your data in a combined, tidy dataset prior to performing the test
+
+alpha = 0.5,
+H0: mean_price_corfu - mean_price_florence = 0
+Ha: mean_price_corfu - mean_price_florence > 0
+
+```{r}
+corfu <- read_csv("data/corfu.csv")
+florence <- read_csv("data/florence.csv")
+
+apart_prices <- corfu %>% 
+  bind_rows(florence, .id = "location") %>% 
+  mutate(location = if_else(location == 1, "corfu", "florence"))
+```
+
+# Calculate observed_stat
+```{r}
+observed_stat <- apart_prices %>% 
+  specify(response = price, explanatory = location) %>% 
+  calculate(stat = "diff in means", c("corfu", "florence"))
+```
+
+# Null distribution
+```{r}
+null_distribution <- apart_prices %>% 
+  specify(response = price, explanatory = location) %>% 
+  hypothesise(null = "independence") %>% 
+  generate(reps = 5000, type = "permute") %>% 
+  calculate(stat = "diff in means", c("corfu", "florence"))
+```
+
+# Visualise null distribution and observed stat
+```{r}
+null_distribution %>% 
+  visualise(bins = 30) +
+  shade_p_value(obs_stat = observed_stat, direction = "greater")
+```
+
+# Calculate p
+```{r}
+get_p_value(x = null_distribution, obs_stat = observed_stat, direction = "greater")
+```
+
+We conclude that this evidence does not allow us to reject the null hypothesis. There is no significant evidence which allows to conclude that Florence is significantly lower priced than Corfu.
+
+# Test for difference in paired Samples
+
+```{r}
+books <- read_csv("data/ucla_textbooks_f18.csv")
+```
+
+Is there a significant difference on average between the prices for new texts offered by the campus bookstore vs the prices of the same texts on Amazon
+```{r}
+books %>% 
+  select(bookstore_new, amazon_new)
+```
+
+# Add a column showing difference between our two prices 
+```{r}
+books_diff <- books %>% 
+  select(bookstore_new, amazon_new) %>% 
+  mutate(diff_new = bookstore_new - amazon_new) %>% 
+  filter(!is.na(diff_new))
+
+books_diff
+```
+
+```{r}
+books_diff %>% 
+  ggplot() +
+  aes(x = diff_new) +
+  geom_histogram(col = "white")
+```
+
+# Set our test
+alpha = 0.05
+H0: mean difference between Amazon new and bookshop new = 0
+Ha: mean difference between Amazon new and bookshop new != 0
+
+# Null distribution
+```{r}
+null_distribution <- books_diff %>% 
+  specify(response = diff_new) %>% 
+  hypothesise(null = "point", mu = 0) %>% 
+  generate(reps = 10000, type = "bootstrap") %>% 
+  calculate(stat = "mean")
+```
+
+# Observed stat
+```{r}
+observed_stat <- books_diff %>% 
+  specify(response = diff_new) %>% 
+  calculate(stat = "mean")
+```
+
+# Visualise
+```{r}
+null_distribution %>% 
+  visualise(bins = 30) +
+  shade_p_value(obs_stat = observed_stat, direction = "both")
+```
+
+# Calculate
+```{r}
+get_p_value(null_distribution, observed_stat, "both")
+```
+
+We can reject H0 - that there is no difference, so we say the event suggests that there is a significant difference between prices on Amazon and bookstore
+
+# Testing difference in proportions - 
+Is the amount of women voting for Obama significantly different than the percentage of women voting for Romney?
+
+H0: mean_women_Obama - mean_women_Rom = 0
+Ha: mean_women_Obama - mean_women_Rom != 0
+
+```{r}
+poll <- read_csv("data/election_data.csv")
+```
+
+```{r}
+poll %>% 
+  ggplot() +
+  aes(x = vote, fill = gender) +
+  geom_bar(position = "fill")
+```
+# Observed
+```{r}
+observed_stat <- poll %>% 
+  specify(response = gender, explanatory = vote, success = "woman") %>% 
+  calculate(stat = "diff in props", order = c("obama", "romney"))
+```
+
+# Null
+```{r}
+null_distribution <- poll %>%
+  specify(gender ~ vote, success = "woman") %>% 
+  hypothesize(null = "independence") %>% 
+  generate(reps = 1000, type = "permute") %>%
+  calculate(stat = "diff in props", order = c("obama", "romney"))
+head(null_distribution)
+```
+
+# Vis
+```{r}
+null_distribution %>% 
+  visualise() +
+  shade_p_value(obs_stat = observed_stat, direction = "both")
+```
+
+# P value
+```{r}
+get_p_value(x = null_distribution, obs_stat = observed_stat, direction = "both")
+```
+
+Strong evidence to reject null hypothesis, conclude that the proportion of Obama voters who are women is significantly different to the proportion of Romney voters who are women.

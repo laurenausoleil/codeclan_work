@@ -1,0 +1,135 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Does the proportion of books in the Goodreads database that lack text reviews differ significantly from 7%?
+
+alpha = 0.05
+H0: prop books lack text = 0.07
+Ha: prop books lack text != 0.07
+
+```{r}
+library(tidyverse)
+library(janitor)
+library(infer)
+```
+
+```{r}
+books <- read_csv("data/books.csv") %>% clean_names()
+```
+
+# Cleaning 
+```{r}
+books_tidy_2020 <- books %>% 
+  filter(!is.na(average_rating)) %>% 
+  rename(num_pages = number_num_pages)
+```
+
+# Find proportion of books with no text reviews
+```{r}
+observed_stat <- books_tidy_2020 %>% 
+  group_by(text_reviews_count) %>% 
+  # Number of txts with no reviews / number of books in sample
+  summarise(prop = n()/nrow(books_tidy_2020)) %>% 
+  filter(text_reviews_count == 0) %>% 
+  pull(prop)
+```
+
+Calculate prop using infer
+```{r}
+infer_stat <- books_tidy_prop %>% 
+  specify(response = text_reviews_flag,
+          success = "no_text_review") %>% 
+  calculate(stat = "prop")
+```
+
+# Create a binary variable
+```{r}
+books_tidy_prop <- books_tidy_2020 %>% 
+  mutate(text_reviews_flag = if_else(text_reviews_count > 0, "text_review", "no_text_review"))
+```
+
+
+# Generate a null distribution
+```{r}
+null_distribution <- books_tidy_prop %>% 
+  specify(response = text_reviews_flag,
+  # Success is what part goes on the of the proportion/ the proportion we are interested in
+          success = "no_text_review") %>% 
+  hypothesise(null = "point",
+  # p for proportion, not p-value
+              p = 0.07) %>% 
+  # use simulate instead of bootstrap - simulate a circumstance where the probability of getting no text reviews is 7%. Creates the simulated proportions of success where the null hypothesis is true
+  generate(reps = 5000, type = "simulate") %>% 
+  calculate(stat = "prop")
+```
+
+
+# Visualise null distribution and observed statistics
+```{r}
+null_distribution %>% 
+  visualise(bins = 30) +
+  shade_p_value(obs_stat = observed_stat, direction = "both")
+```
+
+# Calculate p value
+```{r}
+p_value <- null_distribution %>% 
+  get_p_value(obs_stat = observed_stat,
+              direction = "both")
+
+p_value
+```
+
+# Task
+Task - 15 mins
+Let's say you work for a publishing company and you want to use the Goodreads database to provide insight for future investment. Your CEO has decided they want to invest in French language books, if there is compelling evidence that there is a lack of such books in the market. Based on their experience of the industry, they have decided that if the proportion of books published in French is less than 1.5% then they will invest in publishing more.
+The hypothesis test corresponding to this business question is
+H0: π French = 0.015
+Ha: π French < 0.015
+Let's say answering this question is very important to the business because it will be used to justify investment, so we want to be 'stricter' and perform a more 'conservative' test. This is because, if we reject H0, we will be investing money, and so it will be more costly to make a type-I error (a false positive, i.e. we conclude that the proportion of books that are French is less than 1.5% even though it is not in reality), than a type-II error (a false negative).
+We would do this by decreasing our significance level α for the test. By decreasing α we reject H0 less often and need to have very strong evidence to do so.
+So, we will test this hypothesis at a significance level of α=0.01.
+
+# Is the proportion of books written in French less than 1.5%
+H0: prop_in_french = 0.015
+Ha: prop_in_french < 0.015
+alpha = 0.01
+
+# Get observed statistic
+```{r}
+observed_prop <- books_tidy_2020 %>% 
+  filter(language_code == "fre") %>% 
+  summarise(prop = n()/ nrow(books_tidy_2020)) %>% 
+  pull(prop)
+```
+
+
+# Get null distribution
+```{r}
+null_dist_french_1.5 <- books_tidy_2020 %>% 
+  mutate(in_french = if_else(language_code == "fre", "french", "not_french")) %>% 
+  specify(response = in_french, success = "french") %>% 
+  hypothesise(null = "point", p = 0.015) %>% 
+  generate(reps = 5000, type = "simulate") %>% 
+  calculate(stat = "prop")
+```
+
+# Visualise null distribution and observed stat
+```{r}
+null_dist_french_1.5 %>% 
+  visualise(bins = 30) +
+  shade_p_value(obs_stat = observed_prop, direction = "less")
+```
+
+distribution not very very normal...
+
+# Calculate p value
+```{r}
+get_p_value(x = null_dist_french_1.5, obs_stat = observed_prop, direction = "less")
+```
+
+If null hypothesis were true, that percentage of books written in French = 1.5%, 
+then I would get this distribution if I were able to take 5000 samples of 10999 observations of all books.
+If this were true, I could still get a value of 0.0147 (as observed in my sample) or less 43% of the time. This means that the proportion of books written in French in this sample does not indicate that in reality, H0 is not true. Our sample proportion is very possible if the percent of books written in French is 1.5%.

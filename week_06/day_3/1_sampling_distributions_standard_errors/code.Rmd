@@ -1,0 +1,150 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(janitor)
+
+telco <- read_csv("data/telecomms_churn.csv") %>% 
+  clean_names()
+
+head(telco)
+```
+
+# Our imaginary population
+
+```{r}
+summary_pop <- telco %>% 
+  summarise(
+    mean_monthly_charges = mean(monthly_charges),
+    mean_tenure = mean(tenure),
+    prop_churn = mean(churn == "Yes")
+  )
+
+summary_pop
+```
+
+```{r}
+telco %>% 
+  ggplot() +
+  aes(x = monthly_charges) +
+  geom_histogram(col = "white")
+```
+
+```{r}
+telco %>% 
+  ggplot() +
+  aes(x = tenure) +
+  geom_histogram(col = "white")
+```
+
+```{r}
+telco %>% 
+  ggplot(aes(x = churn)) +
+  geom_
+```
+
+# Sample
+## Simple Random Sampling
+every observation in the population has an equal chance of being selected
+
+```{r}
+library(infer)
+
+# take 200 observations from the data, one time.
+sample_200 <- telco %>% 
+  rep_sample_n(size = 200, reps = 1, replace = F)
+sample_200
+
+# our data comes out grouped by replicate
+groups(sample_200)
+```
+
+```{r}
+summary_sample_200 <- sample_200 %>% 
+  ungroup() %>% 
+  summarise(
+    mean_monthly_charges = mean(monthly_charges),
+    mean_tenure = mean(tenure),
+    prop_churn = mean(churn == "Yes")
+  )
+
+# These are statistics or point estimates
+summary_sample_200
+
+# These are parameters
+summary_pop
+```
+
+# Sampling error
+
+## In theory
+sampling error = point estimate - population parameter
+ 
+```{r}
+summary_sample_200 - summary_pop
+```
+ 
+# Resampling
+A way of imitating the act of collecting lots of different samples
+ 
+```{r}
+rep_sample_200 <- telco %>%
+  rep_sample_n(size = 200, reps = 5000) %>%
+  summarise(
+    mean_monthly_charges = mean(monthly_charges), 
+    mean_tenure = mean(tenure),
+    prop_churn = mean(churn == "Yes")
+  ) 
+rep_sample_200
+```
+# Sample distribution
+```{r}
+# here ..density.. tells ggplot to use the probability density rather than count
+# in the histogram
+monthly_charges_plot <- rep_sample_200 %>%
+  ggplot(aes(x = mean_monthly_charges)) + 
+  geom_histogram(col = "white", fill = "steel blue", alpha = 0.7) +
+  labs(x = "mean monthly_charges from each sample")
+monthly_charges_plot
+```
+ 
+# Standard Error
+
+Standard error is the standard deviation of the sampling distribution.
+
+```{r}
+std_errors <- rep_sample_200 %>% 
+  summarise(
+    se_month_charges = sd(mean_monthly_charges),
+    se_tenure = sd(mean_tenure),
+    se_prop_churn = sd(prop_churn)
+  )
+std_errors
+```
+
+```{r}
+library(fastGraph)
+```
+
+## What proportion of our monthly charges fall between 60 and 70?
+
+```{r}
+shadeDist(
+  xshade = c(60, 70), 
+  lower.tail = FALSE, 
+  ddist = "dnorm", 
+  parm1 = mean(rep_sample_200$mean_monthly_charges), 
+  parm2 = std_errors$se_month_charges, 
+  xlab = "mean_monthly_charges",
+  col = c("black", "grey")
+)
+```
+98% of the samples we have pulled have a mean between 60 and 70.
+Following our simulation, 98% of our samples fall that they have a mean between 60 and 70.
+This is not inferential statistics yet.
+
+This lesson shows us that sample distributions can help us to model what is happening in a population
+

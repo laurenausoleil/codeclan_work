@@ -1,0 +1,75 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(prob)
+```
+
+```{r}
+# sample space for roll of 2 die
+
+s_two_dice <- rolldie(2)
+s_two_dice
+
+# size of sample space
+
+s_two_dice %>% 
+  summarise(size_of_s = n())
+```
+
+```{r}
+# event space for a 2 roll die = 7
+# event sum == 7
+
+s_sum_equals_seven <- s_two_dice %>% 
+  dplyr::filter(X1 + X2 == 7)
+
+# size of event space / number of possibilities totalling 7
+
+s_sum_equals_seven %>% 
+  summarise(size_of_event_space = n())
+```
+
+```{r}
+# add a total value to s_two_dice
+
+s_two_dice <- s_two_dice %>% 
+  mutate(total = X1 + X2)
+s_two_dice
+```
+
+```{r}
+# use new variable to define event space for total = 7
+
+s_sum_equals_seven <- s_two_dice %>% 
+  dplyr::filter(total == 7)
+s_sum_equals_seven
+```
+
+```{r}
+# new event space for total greater than ten
+
+s_sum_greater_than_10 <- s_two_dice %>% 
+  dplyr::filter(total > 10)
+s_sum_greater_than_10
+```
+
+```{r}
+# event - first die is even
+
+# variable checks if first die is even
+s_two_dice <- s_two_dice %>% 
+  mutate(first_die_even = 
+           if_else(X1 %% 2 == 0, T, F))
+s_two_dice
+
+# define event space for first_die is even
+
+s_first_die_even <- s_two_dice %>% 
+  dplyr::filter(first_die_even == T)
+s_first_die_even
+```
+

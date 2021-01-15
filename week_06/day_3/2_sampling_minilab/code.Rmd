@@ -1,0 +1,182 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+1 Introduction
+Let’s practice drawing and analysing sampling distributions from a larger dataset that we will treat as a population. Slightly morbidly, we’re going to use data derived from a study of heart disease!
+
+Remember throughout the following tasks that this is something of a ‘fake’ situation:
+Normally, we would have a single sample of a given size drawn from a population, ideally containing as much data as possible.
+Here, we’re treating a sample as if it were a population, and repeatedly drawing smaller samples from it. We’re doing this for educational purposes, to let you see what would happen if you could sample a population multiple times.
+
+
+2 MVP
+Load and explore the data held in heart.csv. A data dictionary is also available.
+
+```{r}
+library(tidyverse)
+library(infer)
+
+heart <- read_csv("data/heart.csv")
+```
+
+Plot a histogram and/or boxplot for thalach (maximum heart rate achieved in stress testing). How normal is the distribution?
+
+```{r}
+heart %>% 
+  ggplot() +
+  aes(x = thalach) +
+  geom_boxplot()
+```
+1 outlier, median just over 150, left skewed
+
+```{r}
+heart %>% 
+  ggplot() +
+  aes(x = thalach) +
+  geom_histogram(col = "white", bins = 25)
+```
+Left skewed, near normal dist, steeper drop on high thalach than low, poss outliers at ~40, unimodal, mode ~165
+
+Also plot a barplot of exang (whether the patient displayed exercise induced angina)
+
+```{r}
+heart %>% 
+  ggplot(aes(x = exang)) +
+  geom_bar()
+```
+exang of 0 roughly twice as likely as exang of 1. Assume 1 = experienced exang and 0 = no exang reported
+
+Now calculate population parameters: what is the mean thalach in the population. What proportion of patients have exercise induced angina (exang)?
+
+```{r}
+pop_param <- heart %>% 
+  summarise(mean_thalach = mean(thalach),
+            prop_exang = mean(exang == 1))
+pop_param
+```
+
+
+Now take a single sample of 50-patients from the population and calculate point estimates for mean thalach and proportion of exang from this sample (let’s call these mean_thalach and prop_exang going forward).
+[Hint - use rep_sample_n() from the infer package to do this]
+
+```{r}
+sample_50_1 <- heart %>% 
+  rep_sample_n(size = 50, rep = 1, replace = F)
+```
+
+```{r}
+pe_50_1 <- sample_50_1 %>% 
+  ungroup() %>% 
+  summarise(mean_thalach = mean(thalach),
+            prop_exang = mean(exang == 1))
+
+pe_50_1
+```
+
+
+What are the sampling errors of these point estimates?
+[Hint - remember a sampling error is defined as the difference between a point estimate drawn from a sample, and a population parameter]
+
+```{r}
+pe_50_1 - pop_param
+```
+
+Now we’re going to repeatedly sample 50-patients from the population and build up sampling distributions for the mean_thalach and prop_exang point estimates. Take 5000 samples and store the sampling distributions in a variable rep_sample_50.
+[Hint - again, use rep_sample_n() to do this.]
+
+```{r}
+sample_50_5000 <- heart %>% 
+  rep_sample_n(size = 50, reps = 5000, replace = F)
+
+pe_50_5000 <- sample_50_5000 %>% 
+  ungroup() %>% 
+  group_by(replicate) %>% 
+  summarise(mean_thalach = mean(thalach),
+            prop_exang = mean(exang == 1))
+
+```
+
+Visualise the sampling distributions of mean_thalach and prop_exang as histograms. How normal do the sampling distributions look?
+
+# Mean thalach sampling distribution 
+```{r}
+pe_50_5000 %>% 
+  ggplot() +
+  aes(x = mean_thalach) +
+  geom_histogram(col = "white")
+```
+
+# Prop Exang Sampling Distribution
+```{r}
+pe_50_5000 %>% 
+  ggplot() +
+  aes(x = prop_exang) +
+  geom_histogram(col = "white", alpha = 0.8)
+```
+
+Obtain standard errors of the sampling distribution of mean_thalach and prop_exang directly as the standard deviations of the sampling distributions held in rep_sample_50
+
+# Standard Error
+Standard error is the sd of the sampling distribution
+
+```{r}
+se_50_5000 <- pe_50_5000 %>% 
+  summarise(se_thalach = sd(mean_thalach),
+            se_exang = sd(prop_exang))
+
+se_50_5000
+```
+
+
+Repeat steps 7. and 9. (omitting step 8.) once more with samples of size 100-patients, and again with samples of size 200-patients. How do the standard errors of mean_thalach and prop_exang change as sample size increases? Does the uncertainty in the calculated statistics increase or decrease as sample size increases?
+[Hint - it’s OK to copy, paste and alter code to do this!]
+
+```{r}
+sample_100_5000 <- heart %>% 
+  rep_sample_n(size = 100, reps = 5000, replace = F)
+
+pe_100_5000 <- sample_100_5000 %>% 
+  ungroup() %>% 
+  group_by(replicate) %>% 
+  summarise(mean_thalach = mean(thalach),
+            prop_exang = mean(exang == 1))
+
+```
+
+# Standard Error
+```{r}
+se_100_5000 <- pe_100_5000 %>% 
+  summarise(se_thalach = sd(mean_thalach),
+            se_exang = sd(prop_exang))
+```
+
+
+```{r}
+sample_200_5000 <- heart %>% 
+  rep_sample_n(size = 200, reps = 5000, replace = F)
+
+pe_200_5000 <- sample_200_5000 %>% 
+  ungroup() %>% 
+  group_by(replicate) %>% 
+  summarise(mean_thalach = mean(thalach),
+            prop_exang = mean(exang == 1))
+
+```
+
+# Standard Error
+```{r}
+se_200_5000 <- pe_200_5000 %>% 
+  summarise(se_thalach = sd(mean_thalach),
+            se_exang = sd(prop_exang))
+```
+
+
+```{r}
+se_50_5000
+se_100_5000
+se_200_5000
+```
+Standard error decreases as sample size increases.
+Or certainty increases as sample size increases.

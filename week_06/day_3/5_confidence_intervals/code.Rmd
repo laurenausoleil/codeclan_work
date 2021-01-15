@@ -1,0 +1,181 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(janitor)
+library(infer)
+
+sample_200 <- read_csv("data/telecomms_churn_200_sample.csv") %>% 
+  clean_names()
+```
+
+# Calculating a 200 observation bootstrap sample
+Each resample needs to be the same size as the sample.
+
+```{r}
+bootstrap_resample_200 <- sample_200 %>% 
+  rep_sample_n(size = 200, replace = T, reps = 5000) %>% 
+  summarise(mean_tenure = mean(tenure))
+```
+
+How close is the bootstrapped sampling distribution of mean(tenure) to the one shown above?
+```{r}
+pop <- read_csv("data/telecomms_churn.csv") %>% 
+  clean_names() %>% 
+  rep_sample_n(size = 200, replace = F, reps = 5000) %>%
+  summarise(mean_tenure = mean(tenure))
+```
+
+Plot a histogram of the bootstrapped sampling distribution
+```{r}
+bootstrap_resample_200 %>% 
+  ggplot() +
+  aes(x = mean_tenure) +
+  geom_histogram(col = "white")
+
+pop %>% 
+  ggplot() +
+  aes(x = mean_tenure) +
+  geom_histogram(col = "white")
+```
+
+Calculate the standard error in mean(tenure) and compare it with the previous value 1.72 [remember: this is just the sd() of the sampling distribution]
+```{r}
+bootstrap_resample_200 %>% 
+  summarise(se_tenure = sd(mean_tenure))
+```
+
+Slightly higher standard error. 0.026 of a month, less than one day.
+
+# Confidence interval from a bootstrap distribution
+
+## Percentile Method
+```{r}
+ci_95 <- bootstrap_resample_200 %>% 
+  summarise(mean_bootstrap = mean(mean_tenure),
+            lower_bound = quantile(mean_tenure, 0.025),
+            upper_bound = quantile(mean_tenure, 0.975)
+  )
+ci_95
+```
+
+## 99% Confidence
+```{r}
+ci_99 <- bootstrap_resample_200 %>% 
+  summarise(mean_bootstrap = mean(mean_tenure),
+            lower_bound = quantile(mean_tenure, 0.005),
+            upper_bound = quantile(mean_tenure, 0.995)
+  )
+ci_99
+```
+This gives us a wider range, from 28.17 - 37.11 months, which we can be 99% confident that the population value falls within.
+It is a bigger interval that we are more confident in.
+
+# Infer Package Version of this workflow
+
+```{r}
+infer_resample <- sample_200 %>% 
+  specify(response = tenure) %>% 
+  generate(reps = 5000, type = "bootstrap") %>% 
+  calculate(stat = "mean") 
+
+infer_ci <- infer_resample %>% 
+  get_ci(level = 0.95, type = "percentile")
+```
+
+# visualise our confidence interval
+```{r}
+infer_resample %>% 
+  visualise(bins = 30) +
+  shade_ci(endpoints = infer_ci)
+```
+# Find the mean using regular dplyr
+```{r}
+infer_resample %>% 
+  summarise(mean = mean(stat))
+```
+
+# Task
+- same workflow with 300 (400, 500) observation sample
+- mean tenure as a sample distribution and point estimate
+- 95% CI - compare with ci_200
+
+```{r}
+sample_300 <- read_csv("data/telecomms_churn_300_sample.csv") %>% 
+  clean_names()
+
+bootstrap_300 <- sample_300 %>% 
+  specify(response = tenure) %>% 
+  generate(reps = 5000, type = "bootstrap") %>% 
+  calculate(stat = "mean")
+
+ci_bootstrap_300 <- bootstrap_300 %>% 
+  get_ci(level = 0.95, type = "percentile")
+
+ci_bootstrap_300
+infer_ci
+```
+
+with a larger dataset, my confidence interval gets narrower. Because we can be more confident in our results, we can achieve higher levels of certainty on a smaller interval.
+
+```{r}
+sample_400 <- read_csv("data/telecomms_churn_400_sample.csv") %>% 
+  clean_names()
+
+bootstrap_400 <- sample_400 %>% 
+  specify(response = tenure) %>% 
+  generate(reps = 5000, type = "bootstrap") %>% 
+  calculate(stat = "mean")
+
+ci_bootstrap_400 <- bootstrap_400 %>% 
+  get_ci(level = 0.95, type = "percentile")
+
+ci_bootstrap_400
+
+ci_bootstrap_300
+
+infer_ci
+```
+
+```{r}
+sample_500 <- read_csv("data/telecomms_churn_500_sample.csv") %>% 
+  clean_names()
+
+bootstrap_500 <- sample_500 %>% 
+  specify(response = tenure) %>% 
+  generate(reps = 5000, type = "bootstrap") %>% 
+  calculate(stat = "mean")
+
+ci_bootstrap_500 <- bootstrap_500 %>% 
+  get_ci(level = 0.95, type = "percentile")
+
+ci_bootstrap_500
+ci_bootstrap_400
+ci_bootstrap_300
+infer_ci
+```
+
+
+# Confidence Intervals for a proportion
+
+```{r}
+bootstrap_churn <- sample_200 %>% 
+  specify(response = churn, success = "Yes") %>% 
+  generate(reps = 5000, type = "bootstrap") %>% 
+  calculate(stat = "prop")
+
+churn_ci <- bootstrap_churn %>% 
+  get_ci(level = 0.95, type = "percentile")
+
+churn_ci
+```
+
+```{r}
+bootstrap_churn %>% 
+  visualise(bins = 30) +s
+  shade_ci(endpoints = churn_ci)
+```
+
