@@ -197,20 +197,36 @@ clean_diet %>%
   summarise(max_value = max(avg_daily_kcals, na.rm = TRUE))
 ```
 
-
-
-
 Question 12
 
 Now write a function which finds the top calorie source for a user-specified vector of both countries and years. Then use your function to find the top calorie source for the UK and Zimbabwe in 1965, 1975, 1985, 1995 and 2005. Try out your function a few more times for countries/years that you find interesting! Also consider whether there are any limitations of your function.
 
+```{r}
+find_top <- function(choose_country, choose_year) {
+  clean_diet %>% 
+    filter(country == choose_country &
+             year == choose_year) %>% 
+    slice_max(order_by = avg_daily_kcals)
+}
+```
 
+```{r}
+find_top(c("Zimbabwe", "Afghanistan", "Turkey"), 1985:1999)
+```
+Only works in this dataset (change by adding x or df argument)
 
 Question 13
 
 Use your function to find the top calorie source in 1970 for all countries starting with B.
 
+```{r}
+b_countries <- clean_diet %>% 
+  filter(grepl("^[Bb]+", country)) %>% 
+  distinct(country) %>% 
+  pull(country)
 
+find_top(b_countries, 1970)
+```
 
 Question 14
 
