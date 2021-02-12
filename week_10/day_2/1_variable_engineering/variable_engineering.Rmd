@@ -1,0 +1,127 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Variable engineering / Feature engineering
+Turn our variables into something useful for our model to work with.
+
+```{r}
+library(tidyverse)
+grades <- read_csv("data/grades.csv")
+```
+
+```{r}
+summary(grades)
+```
+
+# Dealing with NAs
+
+Remove columns - only if a significant proportion is missing
+Remove rows - affects the calculation
+Impute - good choice in this context. Allows us to use the associated data, without affecting the results of our calculation significantly.
+
+```{r}
+grades <- grades %>% 
+  mutate(take_home = coalesce(take_home, mean(take_home, na.rm = TRUE)))%>% 
+  mutate(final = coalesce(final, mean(final, na.rm = TRUE)))
+```
+
+# Encoding categorical data. e.g. creating dummy variables
+```{r}
+# find all subjects
+grades %>% 
+  distinct(subject)
+```
+
+```{r}
+# incomplete hard coding
+grades_subject_dummy <- grades %>% 
+  mutate(
+    subject_english = if_else(subject == "english", 1, 0),
+    subject_maths = if_else(subject == "maths", 1, 0)
+  )
+```
+
+
+```{r}
+# incomplete attempt to use pivot wider
+grades_subject_dummy <- grades %>%
+  pivot_wider(
+    names_from = subject, names_prefix = "subject_", values_from = subject
+    )
+```
+
+The dummy variable trap.
+If we know maths, english, french and physics are 0, we know there will be a one in biology. We only need n - 1 dummy variables. We have an extra variable.
+We have multi-colinear data - one of our variables can be predicted from the others. This will distort our model.
+
+# Using fastDummies library
+
+```{r}
+library(fastDummies)
+```
+```{r}
+grades_subject_fast <- grades %>% 
+  dummy_cols(select_columns = "subject",
+             remove_first_dummy = TRUE,
+             # remove_most_frequent_dummy = TRUE,
+             remove_selected_columns = TRUE
+             )
+```
+
+# Binning
+Setting dummy variables for continuous data
+Bins don't have to be consistent sizes (in the range they cover or the amount values contained)
+Think about open [] and closed intervals ()
+
+```{r}
+grades_final_binned <- grades %>% 
+  mutate(final_grade = cut(
+    final, 
+    breaks = c(-Inf, 50, 60, 70, Inf), 
+    # default, right = TRUE, means right hand bracket is open and left is closed
+    right = FALSE,
+    labels = c("F", "C", "B", "A")
+  )) %>% 
+  dummy_cols(
+    select_columns = "final_grade",
+    remove_first_dummy = TRUE,
+    remove_selected_columns = TRUE
+  )
+```
+
+# Variable Scaling
+Without providing context, larger numbers will have a more significant impact on our model than smaller numbers. e.g. 1000 metres will have a greater impact than 1.
+By scaling our raw numbers down, we maintain their relative difference, but decrease their magnitude.
+
+## Standardisation
+Measure how many standard deviations a value is from the mean.
+
+```{r}
+assignment_mean <- mean(grades$assignment)
+assignment_sd <- sd(grades$assignment)
+```
+```{r}
+assignment_standardisation_formula <- function(x) {
+  x = (x - assignment_mean) / assignment_sd
+}
+```
+```{r}
+grades_assign_stand <- grades %>% 
+  mutate(assignment = map_dbl(assignment, assignment_standardisation_formula))
+head(grades_assign_stand)
+```
+```{r}
+grades_assign_scaled <- grades %>% 
+  mutate(assignment = scale(assignment))
+head(grades_assign_scaled)
+```
+
+
+
+## Min-Max scaling
+A measure of scale using minimum and maximum values. 0:1
+
+## Mean Value Normalisation
+A measure of scale relative to the mean. -1:1

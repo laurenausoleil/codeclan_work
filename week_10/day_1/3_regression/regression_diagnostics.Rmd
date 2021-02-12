@@ -1,0 +1,187 @@
+# Detailed linear model (lm()) output
+
+```{r}
+library(tidyverse)
+library(janitor)
+library(modelr)
+```
+
+```{r}
+height <- c(176, 164, 181, 168, 195, 185, 166, 180, 188, 174)
+weight <- c(82, 65, 85, 76, 90, 92, 68, 83, 94, 74 )
+sample <- tibble(
+  weight,
+  height
+)
+```
+
+
+```{r}
+# Build our model
+model <- lm(height ~ weight, data = sample)
+
+# Summarise in baseR
+summary(model)
+
+# Summarise in broom with tidy
+library(broom)
+tidy_output <- tidy(model) %>% 
+  clean_names()
+
+# Summarise in broom with glance
+glance_output <- glance(model) %>% 
+  clean_names()
+
+```
+
+# Measures of goodness of fit
+
+## The r squared value
+```{r}
+glance_output$r_squared
+```
+
+# In a simple linear regression model r squared is the square of r.
+```{r}
+sample %>% 
+  summarise(r = cor(weight, height)^2)
+```
+
+## Coefficients
+```{r}
+tidy_output
+```
+
+term - labels the coefficients
+estimate - contains the fitted values
+p_value - contains the p-value for a hypothesis test of that coefficient
+    H0: coefficient = 0
+    Ha: coefficient ≠ 0
+    As usual, if the p-value is less than our significance level (α values of 0.05 or 0.01
+    are typical), we can be reasonably certain that the coefficient is significantly different     from zero.
+    
+In order to trust and use these p-values, the residuals of the model have to fulfill certain conditions which you have to check. The residuals have to:
+  * be independent of each other
+  * be normally distributed
+  * show no systematic increase or decrease in variation across the range of data
+The easiest way to check each of these is by looking at diagnostic plots.
+
+# Diagnostic plots
+Help us to check whether we can trust our p-value
+
+```{r}
+library(ggfortify)
+autoplot(model)
+```
+
+## Residuals vs fitted
+Tests the independence of residuals.
+We want the line to stay close to zero.
+Looks good.
+
+## Normal Q-Q or quantil-quantile plot
+Tests the normality of the residuals. 
+We are looking for points which lie close to the line.
+Looks good in this case.
+
+## Scale-location
+Tests the constancy of variation in the residuals.
+Looking for residuals occuring in a band of fixed width above the x axis
+Looks good in this case.
+
+# Task
+We provide two data sets: distribution_1.csv and distribution_2.csv. Fitting a simple linear regression to each of these distributions leads to problems with the residuals for two different reasons. See if you can identify the problem in each case!
+
+Load the data set.
+```{r}
+dist_1 <- read_csv("data/distribution_1.csv")
+```
+
+Fit a simple linear regression taking y as the outcome and x as the explanatory variable, saving the model object.
+```{r}
+model_1 <- lm(y ~ x, dist_1)
+```
+
+Check the diagnostic plots for the model object and identify the main problem you see with the residuals (use the autoplot() function)
+```{r}
+autoplot(model_1)
+```
+Finally, plot the data and overlay the best fit line (use add_predictions() to add a pred column to the data set, and then plot via geom_point() and geom_line()).
+```{r}
+dist_1 %>% 
+  add_predictions(model = model_1) %>% 
+  ggplot() +
+  aes(x, y) +
+  geom_point() +
+  geom_line(aes(y = pred), col = "red")
+```
+Does this plot help you interpret the problem you found in the residuals?
+
+this data is not well described by a straight line fit: there is curvature in the plot. We see why we get mainly negative, then positive, then negative residuals.
+
+Load the data set.
+```{r}
+dist_2 <- read_csv("data/distribution_2.csv")
+```
+
+Fit a simple linear regression taking y as the outcome and x as the explanatory variable, saving the model object.
+```{r}
+model_2 <- lm(y ~ x, dist_2)
+```
+
+Check the diagnostic plots for the model object and identify the main problem you see with the residuals (use the autoplot() function)
+```{r}
+autoplot(model_2)
+```
+Finally, plot the data and overlay the best fit line (use add_predictions() to add a pred column to the data set, and then plot via geom_point() and geom_line()).
+```{r}
+dist_2 %>% 
+  add_predictions(model = model_2) %>% 
+  ggplot() +
+  aes(x, y) +
+  geom_point() +
+  geom_line(aes(y = pred), col = "red")
+```
+Does this plot help you interpret the problem you found in the residuals?
+
+We see the data points fall close to the line for low value of x
+, but scatter more distantly around it as x
+ increases. We call data like this heteroscedastic: ‘hetero’ meaning ‘differently’ and ‘scedastic’ meaning ‘scattered’.
+
+We shouldn’t trust the p-values of the coefficient in either of these regression fits: the conditions for the residuals haven’t been satisfied, meaning the hypothesis tests are unsafe.
+
+# Bootstrapped regression
+We saw above that the hypothesis tests for regression coefficients reported in the model output are based upon the assumption that the residuals are normally distributed. This presents a problem, as some of the data you encounter in real life will fail these criteria.
+
+Remember that bootstrapping helped us to put aside any worries about whether the sampling distribution was normal when we were calculating confidence intervals and performing hypothesis tests. It can also help us overcome this limitation of regression.
+
+```{r}
+library(infer)
+
+# specify regression formula
+# stat = "slope" extracts the regression coefficient
+bootstrap_distribution_slope <- dist_2 %>%
+  specify(formula = y ~ x) %>%
+  generate(reps = 10000, type = "bootstrap") %>%
+  calculate(stat = "slope")
+
+slope_ci95 <- bootstrap_distribution_slope %>%
+  get_ci(level = 0.95, type = "percentile")
+slope_ci95
+```
+```{r}
+bootstrap_distribution_slope %>%
+  visualise(bins = 30) +
+  shade_ci(endpoints = slope_ci95)
+```
+
+What is bootstrapping doing here? We resample distribution_2 10000 times, and for each of those resamples, we run lm() and extract the slope (i.e. the x coefficient) and add it to our sampling distribution.
+
+The key point here is that 0 is not within the 95% confidence interval, so we can be confident at that level that the coefficient of x is significantly different from 0.
+
+# Compare bootstrapped CI to tidy CI
+```{r}
+# set conf.int = TRUE and conf.level to get a CI
+clean_names(tidy(model_2, conf.int = TRUE, conf.level = 0.95))
+```
+

@@ -1,0 +1,230 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(car)
+library(modelr)
+library(GGally)
+library(ggfortify)
+```
+
+```{r}
+prestige_trim <- Prestige %>% 
+  drop_na() %>% 
+  select(-census)
+```
+
+# Visualisation
+```{r}
+prestige_trim %>% 
+  ggpairs(aes(colour = type, alpha = 0.5))
+```
+Type, income and education looks significant.
+
+# Compare education and type to see which is most significant
+Predict prestige from education
+
+```{r}
+modla <- lm(prestige ~ education, data = prestige_trim)
+modla
+summary(modla)
+```
+Plot
+```{r}
+# setting parameter limits
+# par(mfrow = c(2,2))
+# plot(modla)
+
+autoplot(modla)
+```
+
+```{r}
+model_type <- lm(prestige ~ type, data = prestige_trim)
+model_type
+summary(model_type)
+autoplot(model_type)
+```
+From this test, we can see that education is the most significant predictor
+
+# Second predictor
+
+Find the stuff which is NOT explained by education
+```{r}
+# make a dataframe with the residuals from our model and remove the explanatory variables already contained in our model
+prestige_remaining_resid <- prestige_trim %>% 
+  add_residuals(modla) %>% 
+  select(-c("prestige", "education"))
+
+# plot the new dataframe and look for things which correlates with the residuals i.e. something which exlpains the variance in prestige which is not explained in our current model.
+prestige_remaining_resid %>% 
+  ggpairs(aes(colour = type))
+```
+
+## Test second predictor - income vs type
+```{r}
+model_education_income <- lm(prestige ~ education + income, data = prestige_trim)
+summary(model_education_income)
+```
+
+```{r}
+model_education_type <- lm(prestige ~ education + type, data = prestige_trim)
+summary(model_education_type)
+```
+
+Education income performs better than Education type. Mainly based on r-squared.
+
+# ANOVA: Understanding the statistical significance of categorical predictors
+
+Use ANOVA. Analysis of variance (tests for the difference in more than one sample mean)
+in conjunction with residual variance. 
+
+# How significant was type as a predictor variable compared to our model so far?
+
+Null hypothesis: the model with and without type explains the same amount of variance
+Alternative hypothesis: the models with and without type explain different amounts of variance.
+```{r}
+anova(modla, model_education_type)
+```
+Type is significant.
+
+So far:
+- education: including
+- income: including
+- type: after checking whether type as a whole (rather than just one type) is significant, we will now check whether adding type to our model is helpful
+
+# Check residuals so far
+```{r}
+prestige_remaining_resid <- prestige_trim %>% 
+  add_residuals(model_education_income) %>% 
+  select(-c("prestige", "education", "income"))
+
+prestige_remaining_resid %>% 
+  ggpairs(aes(colour = type))
+```
+
+# Add a third predictor
+```{r}
+model_edu_inc_type <- lm(prestige ~ education + income + type, data = prestige_trim)
+summary(model_edu_inc_type)
+```
+We increase r squared and decrease residual, but our type predictors look insignificant
+
+# So compare model_edu_inc with model_edu_inc_type. This will tell us whether there is a statistical difference between the amount of variance explained by each model.
+```{r}
+anova(model_education_income, model_edu_inc_type)
+```
+The model with type is statistically different to the model without type so we will include that predictor variable.
+
+# Interactions
+Best practice says that we should only include an interaction between variables that we have already included in our model.
+Let's compare education:income, education:type and income:type to see which interaction will improve our model.
+
+## Look at residuals without prestige
+```{r}
+prestige_remaining_resid <- prestige_trim %>% 
+  add_residuals(model_edu_inc_type) %>% 
+  select(-prestige)
+```
+
+## Visualise residuals against interactions
+
+Income | education
+```{r}
+coplot(resid ~ income | education, 
+       # add trend line
+       panel = function(x, y, ...) {
+         points(x, y)
+         abline(lm(y ~ x), col = "blue")
+       },
+       data = prestige_remaining_resid, columns = 6)
+```
+The variance in trend lines indicates that this might be a useful interaction.
+
+education | type
+We can use ggplot here as type is categorical
+```{r}
+prestige_remaining_resid %>% 
+  ggplot(aes(x = education, y = resid, colour = type)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE)
+```
+Also looks promising
+
+Income | Type
+```{r}
+prestige_remaining_resid %>% 
+  ggplot(aes(x = income, y = resid, colour = type)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE)
+```
+Also promising
+
+## Test these three interactions
+
+education:type
+```{r}
+model_edu_inc_type_eduandtype <- lm(prestige ~ education + income + type + education:type,
+                                   data = prestige_trim)
+
+summary(model_edu_inc_type_eduandtype)
+```
+Slightly better than existing model. our education:type does not look significant though.
+
+```{r}
+anova(model_edu_inc_type, model_edu_inc_type_eduandtype)
+```
+Not significant.
+
+education:income
+```{r}
+model_edu_inc_type_eduandinc <- lm(prestige ~ education + income + type + education:income,
+                                   data = prestige_trim)
+
+summary(model_edu_inc_type_eduandinc)
+```
+Standard error has decreased more than with previous model and our new test looks significant.
+```{r}
+anova(model_edu_inc_type, model_edu_inc_type_eduandinc)
+```
+Significant.
+
+income:type
+```{r}
+model_edu_inc_type_incandtype <- lm(prestige ~ education + income + type + income:type,
+                                   data = prestige_trim)
+
+summary(model_edu_inc_type_incandtype)
+```
+This looks more succesful in predicting than edu:inc, but the tests do not look as significant.
+
+```{r}
+anova(model_edu_inc_type, model_edu_inc_type_incandtype)
+```
+More significant difference than the previous two models.
+
+I will make income:type the new model.
+
+# Relative importance analysis
+
+How do we measure the influence of each predictor variable relative to the others?
+
+We use relative importance analysis to split the r squared value across the component predictor variables. The higher the proportion of r squared assigned to a variable, the greater that variables impact on explaining the response variable.
+
+```{r}
+library(relaimpo)
+
+calc.relimp(model_edu_inc_type_incandtype, 
+            # Set type of measurement
+            type = "lmg", 
+            # ensure values add up to 100%
+            rela = TRUE)
+```
+We can say that type is contributing 40% to the prediction, education 30%, income 25% and income:type 4%.
+
+We can also use beta coefficients, but calc.relimp is better!
+
+
+

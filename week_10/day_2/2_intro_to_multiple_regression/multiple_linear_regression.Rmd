@@ -1,0 +1,214 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r, warning = FALSE}
+library(tidyverse)
+library(janitor)
+library(mosaicData)
+library(mosaic)
+library(GGally)
+library(ggfortify)
+```
+
+```{r}
+head(RailTrail)
+```
+
+# Cleaning
+
+```{r}
+railtrail_clean <- RailTrail %>% 
+  clean_names() %>% 
+    mutate(
+      spring = ifelse(spring == 1, TRUE, FALSE),
+      summer = ifelse(summer == 1, TRUE, FALSE),
+      fall = ifelse(fall == 1, TRUE, FALSE)
+  )
+```
+
+# Redundant Predictors
+Variables which can be predicted from, or are aliases of, other variables.
+If we leave these in we will have multicolinearity and our model will account for these variables repeatedly.
+
+```{r}
+alias(lm(volume ~ ., data = railtrail_clean))
+```
+
+```{r}
+railtrail_clean <- railtrail_clean %>% 
+  select(-c("hightemp", "lowtemp", "fall", "day_type"))
+```
+
+
+# GGpairs
+examine plots to find predictors which appear to be associated with volume. The outcome variable for our model.
+
+```{r, warning = FALSE}
+# library(GGally)
+ggpairs(railtrail_clean)
+```
+This shows some correlation between volume and average temperature. So we can start building a model with the hypothesis that volume increases as avg_temp increases.
+
+# Linear Regression Model
+response variable: volume
+predictor variable: avgtemp
+
+volume = intercept + b(avg_temp) * avgtemp
+
+## Plot lm model
+```{r}
+railtrail_clean %>% 
+  ggplot(aes(x = avgtemp, y = volume)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE)
+```
+
+## Build simple linear regression model
+```{r}
+model <- lm(volume ~ avgtemp, data = railtrail_clean)
+```
+
+## Check Goodness of Fit
+```{r}
+# library(ggfortify)
+autoplot(model)
+```
+```{r}
+summary(model)
+```
+some deviation from normality in q-q, heteroscadacity in scale_location (this line slopes up rather than sitting horizontal to the x axis)
+High p-value.
+Residual standard error of 115.9 people!
+
+# A parralel slopes model.
+e.g. Add predictors to the model
+
+## Find and check a variables significance to the output
+We hypothesise that weekday has an effect on volume
+
+```{r}
+railtrail_clean %>% 
+  ggplot(aes(x = weekday, y = volume)) +
+  geom_boxplot()
+```
+Difference in numbers.
+```{r}
+railtrail_clean %>% 
+  summarise(cor = cor(weekday, volume))
+```
+A weak negative correlation.
+
+## Add to the model
+# Adding a categorical variable
+```{r}
+model2 <- lm(volume ~avgtemp + weekday, data = railtrail_clean)
+```
+
+## Check effectiveness
+```{r}
+autoplot(model2)
+```
+```{r}
+summary(model2)
+```
+r^2 has improved from 0.18 to 0.25.
+WeekdayTRUE coefficient -70, means that every day which is a weekday we should see 70 less people visiting.
+Pr(>|t|) = the p value for this test indicates that it is statistically significant.
+avgtemp coefficient 4.5 means for each unit of temperature increase, we expect 4.5 more visitors.
+
+```{r}
+# library(mosaic)
+plotModel(model2)
+```
+In a parallel slopes model, the only difference in calculating the line is the intercept. The lines are parallel.
+
+# Interactions
+Why do we need them?
+```{r}
+railtrail_clean %>%
+  ggplot(aes(x = avgtemp, y = volume, color = weekday)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE)
+```
+avgtemp affects the volume differently depending on whether it is a weekday or not.
+
+## Add interaction to the model
+```{r}
+# volume varies with average temperature and weekday and average temperature interacting with weekday
+model4 <- lm(volume ~ avgtemp + weekday + avgtemp:weekday, data = railtrail_clean)
+
+# another notation option. reads volume varies with avgtemp and weekday and all possible interactions between them
+# model4 <- lm(volume ~ avgtemp *weekday, data = railtrail_clean)
+```
+
+## Plot new model
+```{r}
+plotModel(model4)
+```
+## Check whether the addition is justified.
+```{r}
+autoplot(model4)
+```
+```{r}
+summary(model4)
+```
+
+# Adding a continuous variable
+
+## Are cloudcover and volume associated?
+```{r}
+railtrail_clean %>% 
+  ggplot(aes(x = cloudcover, y = volume)) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE)
+```
+## Add to model
+```{r}
+model5 <- lm(volume ~ avgtemp + weekday + cloudcover, data = railtrail_clean)
+autoplot(model5)
+summary(model5)
+```
+R^2 increases to 0.4
+Residual standard error drops by 11 to 100.3
+
+## Plotting this model
+Things get complicated. You could explore plotly package to draw 3D plots.
+
+# Interaction with continuous predictors
+
+We hypothesise that the relationship between avgtemp and precip will affect volume. e.g. a hot wet day will discourage users
+
+# Check significance of interactions
+Coplot, shingles plot or rooftiles plot
+```{r}
+# plot volume against avgtemp, conditional on precip
+# volume versus avgtemp given precip
+coplot(volume ~ avgtemp | precip, 
+       # add line of best fit
+       panel = function(x, y, ...) {
+         points(x,y)
+         abline(lm(y ~ x), col = "blue")
+       },
+       # set how much the precip shingles overlap
+       overlap = 0.2,
+       data = railtrail_clean)
+```
+This example is of a coplot where the interaction does not have a significant impact.
+If the slope of the lines varied for each shingle, this would indicate a potentially significant interaction between the predictor on the x axis and the conditional predictor.
+
+* the bottom left scatter plot corresponds to volume versus avgtemp for precip values in a narrow range from 0 inches to approximately 0.01 inches (i.e. essentially the days where it did not rain).
+* the bottom right scatter plot corresponds to volume versus avgtemp for precip values in a broader range from 0 inches to approximately 0.16 inches.
+* the top left scatter plot corresponds to volume versus avgtemp for precip values in a very broad range from approximately 0.14 inches to approximately 1.5 inches.
+Why have the shingles ended up being the width that they are? R tries to arrange the shingles so that, as far as possible, they contain near equal numbers of data points.
+
+```{r}
+model7 <- lm(volume ~ avgtemp + cloudcover + weekday + precip + avgtemp:precip, data = railtrail_clean)
+
+autoplot(model7)
+```
+```{r}
+summary(model7)
+```
+This addition is not justified. without avgtemp:precip, precip gets a p value of 0.008, adding the avgtemp:precip is not statistically significant and it nullifies the effect of precip on the model.

@@ -1,0 +1,164 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+There is a baseR way of dealing with timeseries, dealing with objects of ts class.
+
+There are a range of packages in the tidyverse which deal with time series in a tidy format
+
+```{r}
+library(tsibble)
+library(tsibbledata)
+library(tidyverse)
+library(lubridate)
+```
+
+
+# Tsibble
+tsibble is a tibble for time series data
+
+Half hourly record of electricity demand in Victoria, Australia
+
+```{r}
+vic_elec
+```
+
+tsibbles can have an index, which is either timedate or date or time
+find index variable
+```{r}
+index_var(vic_elec)
+```
+
+tsibbles can have a key, 
+```{r}
+global_economy
+# measures for different countries throughout time. the key shows us that there are multiple time series in a dataframe, e.g. Afghanistan measurement is one time series in this database of multiple time series
+key_vars(global_economy)
+```
+
+We can use tidyverse syntax on tsibble
+```{r}
+vic_elec %>% 
+  select(Time, Demand, Temperature)
+
+vic_elec %>% 
+  # keeps time because it is the index
+  select(Demand, Temperature)
+```
+
+# Additional functions in tsibbles
+
+Filter index
+```{r}
+vic_elec %>% 
+  filter_index("2012-01")
+
+vic_elec %>% 
+  filter_index("2012-01-01")
+
+vic_elec %>% 
+  filter_index("2012")
+```
+
+Add year column to tsibble
+```{r}
+vic_elec <- vic_elec %>% 
+  mutate(year = lubridate::year(Time))
+```
+
+# Group by are more complicated because we have to preserve the index
+```{r}
+# Index by replaces the index with the new index variable
+vic_elec %>% 
+  index_by(year) %>% 
+  summarise(avg_temp = mean(Temperature))
+
+vic_elec %>% 
+  index_by(Date) %>% 
+  summarise(avg_temp = mean(Temperature))
+```
+
+# Plotting time series
+Often needs a group and summarise first as too much data will build an unreadable plot.
+```{r}
+vic_elec %>% 
+  index_by(Date) %>% 
+  summarise(mean_temp = mean(Temperature)) %>% 
+  ggplot()+
+  aes(x = Date, y = mean_temp) +
+  geom_line()
+```
+
+# Rolling window statistics
+A different way of summarising/aggregating data
+Window of 10: calculate for 1:10, 2:11, 3:12, 4:13, 5:14. 
+Gives us a similar number of values to what we started with, but smoothes out fluctuations - helps us to see trend.
+We also have cumulative mean.
+
+A moving average using a window of 2000
+```{r}
+library(slider)
+
+vic_elec <- vic_elec %>% 
+  mutate(
+    temp_moving_avg = slide_dbl(
+      Temperature,
+      # functional notation, with . standing for input
+      ~ mean(., na.rm = TRUE),
+      .before = 1000,
+      .after = 1000
+    )
+  )
+```
+
+Plot moving average
+```{r}
+vic_elec %>% 
+  ggplot() +
+  aes(x = Time) +
+  geom_line(aes(y = Temperature), col = "grey") +
+  geom_line(aes(y = temp_moving_avg), col = "red")
+```
+
+Task - moving average with window size of 200 
+More impacted by daily trends
+```{r}
+vic_elec <- vic_elec %>% 
+  mutate(
+    temp_moving_avg_200 = slide_dbl(
+      Temperature,
+      # functional notation, with . standing for input
+      ~ mean(., na.rm = TRUE),
+      .before = 100,
+      .after = 100
+    )
+  )
+vic_elec %>% 
+  ggplot() +
+  aes(x = Time) +
+  geom_line(aes(y = Temperature), col = "grey") +
+  geom_line(aes(y = temp_moving_avg_200), col = "red")
+```
+
+Task - add .complete = TRUE
+Only calculate for the window if there are the full amount of datapoints available.
+```{r}
+vic_elec <- vic_elec %>% 
+  mutate(
+    temp_moving_avg_200 = slide_dbl(
+      Temperature,
+      # functional notation, with . standing for input
+      ~ mean(., na.rm = TRUE),
+      .before = 1000,
+      .after = 1000,
+      .complete = TRUE
+    )
+  )
+vic_elec %>% 
+  ggplot() +
+  aes(x = Time) +
+  geom_line(aes(y = Temperature), col = "grey") +
+  geom_line(aes(y = temp_moving_avg_200), col = "red")
+```
+

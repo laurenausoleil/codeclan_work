@@ -1,0 +1,71 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+```
+
+
+# Naming timezones
+Olson names format: Continent/City
+
+```{r}
+Sys.timezone()
+```
+
+```{r}
+OlsonNames()[1:10]
+```
+
+```{r}
+length(OlsonNames())
+```
+
+tz extracts time zone
+```{r}
+tz(ymd_hms("2016-06-02 04:00:00"))
+```
+
+# Adding a timezone
+```{r}
+ymd_hms("2016-06-02 04:00:00", tz = "Pacific/Auckland")
+```
+
+```{r}
+nz_date <- ymd_hms("2016-06-02 04:00:00", tz = "Pacific/Auckland")
+```
+
+# Converts timezone
+```{r}
+with_tz(nz_date, "Europe/London")
+```
+
+Task
+Let’s say a plane leaves Sydney Australia at 2.15pm on the 7th August 2018, and arrives at 5.40am on the 8th August 2018 in London.
+Create these two dates with the appropriate time zones.
+Work out how long the duration between take off and landing is.
+Say you left London at 6.20am on the 10th August 2018, and the total flight time including stop-overs was 28 hours and 46 minutes. At what time and date would you arrive in Sydney, Australia?
+
+```{r}
+departure <- ymd_hm("2018-Aug-7 14:15", tz = "Australia/Sydney")
+arrival <- ymd_hm("2018-aug-8 5:40", tz = "Europe/London")
+```
+
+```{r}
+as.period(arrival - departure)
+```
+
+```{r}
+departure2 <- ymd_hm("2018-aug-10, 06:20", tz = "Europe/London")
+
+arrival2 <- ymd_hms(departure2 + 
+                    dhours(28) + 
+                    dminutes(46), 
+                    tz = "Australia/Sydney")
+
+arrival2 <- with_tz(departure2 + hours(28) + minutes(46), "Australia/Sydney")
+arrival2
+```
+

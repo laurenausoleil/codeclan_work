@@ -1,0 +1,62 @@
+
+```{r}
+library(sf)
+library(tidyverse)
+library(leaflet)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(rgeos)
+```
+
+```{r}
+r_birthplace_map <- leaflet() %>% 
+  addTiles() %>% 
+  addMarkers(lng = 174.768, lat = -36.852, popup = "R is born")
+
+r_birthplace_map
+```
+
+# Take web data, tidy it and build a leaflet map with it
+
+```{r}
+library(RCurl)
+library(jsonlite)
+library(tidyverse)
+library(leaflet)
+
+# now we combine our url with the attributes we want to take (only active stations, and those in Boulder, Colarado)
+colarado_data_url <- paste0("https://data.colorado.gov/resource/j5pc-4t32.json?","&county=BOULDER")
+
+# now we actually load the data in.
+water_data <- getURL(URLencode(colarado_data_url))
+view(water_data)
+
+# remove the nested data frame
+water_data_df <- fromJSON(water_data) %>% 
+  jsonlite::flatten(recursive = TRUE)
+```
+
+# Clean data
+```{r}
+# turn columns to numeric and remove NA values
+water_data_df_clean <- water_data_df %>%
+  mutate_at(vars(amount, location.latitude, location.longitude), as.numeric) %>%
+  filter(!is.na(location.latitude))
+```
+
+# Make a leaflet map
+```{r}
+water_data_map <- water_data_df_clean %>% 
+  leaflet() %>% 
+  addTiles() %>% 
+  addMarkers(lng = water_data_df_clean$location.longitude, 
+             # lng = ~ location.longitude,
+             lat = water_data_df_clean$location.latitude,
+             # lat = ~ location.latitude,
+             popup = water_data_df_clean$station_name
+             # ~ popup = station_name
+             )
+
+water_data_map
+```
+

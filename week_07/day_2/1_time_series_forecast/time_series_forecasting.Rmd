@@ -1,0 +1,159 @@
+---
+title: "R Notebook"
+---
+
+```{r}
+library(tidyverse)
+library(fable)
+library(tsibble)
+library(tsibbledata)
+library(lubridate)
+library(feasts)
+library(urca)
+```
+
+# Forecast
+Take available data, build a model, predict future results.
+Forecasts assume that change happens at the same rate as it has in the past.
+
+## Things that help us to forecast accurately
+ - do we have enough data
+ - do we understand the data (do we understand why the changes are happening?)
+ - is our forecast likely to have an effect on the actual outcome?
+ 
+# Load and explore data
+```{r}
+head(aus_production)
+
+beer_data <- aus_production %>% 
+  select(Quarter, Beer)
+```
+ 
+# Visualise data
+```{r}
+beer_data %>% 
+  autoplot(Beer)
+```
+ 
+# Fit a model
+Because data looks seasonal and measures on quarters, suggest using a seasonal model.
+
+Snaive, Mean and Arima
+```{r}
+fit <- beer_data %>% 
+  model(
+    snaive = SNAIVE(Beer),
+    mean = MEAN(Beer),
+    arima = ARIMA(Beer)
+  )
+
+fit
+class(fit)
+# mbl - a model table - a tabloe of  model, each model stored as a list
+```
+
+# Calculate a forecast using model
+
+```{r}
+forecast1 <- fit %>% 
+  fabletools::forecast(h = 12)
+# OR  fabletools::forecast(h = "3 years")
+
+forecast1
+```
+
+# Plot forecast to see if it's a good fit
+```{r}
+forecast1 %>% 
+  autoplot(beer_data)
+```
+Large shaded bars are prediction intervals - remove with level = NULL
+```{r}
+forecast1 %>% 
+  autoplot(beer_data, level = NULL, position = "jitter")
+```
+Try plotting this forecast. 
+```{r}
+forecast_arima_10years <- fit %>%
+  select(arima) %>%
+  fabletools::forecast(h = "10 years")
+```
+
+```{r}
+forecast_arima_10years %>% 
+  autoplot(beer_data)
+```
+What happens to the prediction intervals as time increases? Does this make sense to you?
+The prediction intervals increase over time, meaning that the confidence interval is getting bigger because we need a higher range to maintain our confidence levels, because the forecast is less accurate as time passes (because it is based on less up to date information).
+The line shows what the forecast predicts is most likely, then the intervals show us the range of possible values which we can predict with 80% and 95% confidence.
+
+```{r}
+forecast1 %>% 
+  autoplot(beer_data, level = NULL, position = "jitter")
+```
+
+# Make a shorter window so we can see prediction more clearly
+```{r}
+beer_shorter <- beer_data %>% 
+  filter(year(Quarter) >= 1980)
+
+forecast1 %>% 
+  autoplot(beer_shorter, level = NULL)
+
+# See just one model
+
+forecast1 %>% 
+  filter(.model == "snaive") %>% 
+  autoplot(beer_shorter, level = NULL)
+```
+
+# Compare model accuracy
+Use training and test data to see how well the model functions.
+Standard = 80% training data, 20% test data.
+Can depend on sample size and forecast horizon (test set should be the same size as forecast horizon).
+Watch out for overfitting (if the model works too well on the test data).
+
+```{r}
+# check our available years so we know where to put the split in the data
+beer_data <- beer %>%
+  mutate(year = year(Quarter)) %>%
+  distinct(year)%>%
+  arrange(desc(year))
+beer_data
+```
+Create training data set 
+```{r}
+train <- beer_data %>% 
+  filter_index("1992 Q1" ~ "2006 Q4")
+```
+
+Fit model to training set
+```{r}
+fit_train <- train %>% 
+  model(
+    arima = ARIMA(Beer),
+    snaive = SNAIVE(Beer)
+  )
+```
+
+Make a forecast from training dataset
+```{r}
+forecast_train <- fit_train %>% 
+  forecast(h = 14)
+```
+
+Plot training dataset and test data
+```{r}
+forecast_train %>% 
+  autoplot(train, level = NULL) +
+  autolayer(filter_index(beer_data, "2007 Q1" ~ .), colour = "black")
+```
+Calculate accuracy score
+```{r}
+accuracy_model <- forecast_train %>% 
+  accuracy(beer_data)
+
+accuracy_model
+```
+Looking for lower RMSE to find the model most accurately matching our test set. This helps us to choose the forecast model to use for predicting unknown values.
+

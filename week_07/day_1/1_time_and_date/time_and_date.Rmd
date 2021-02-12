@@ -1,0 +1,331 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# R has 6 classes for time and date
+
+## BaseR
+- Date - dates
+- POSIXct - dates and times
+- POSIXlt - dates and times, but allows extraction of indi components
+
+## Tidyverse
+- date - dates, allows extracting
+- time - times, allows extracting
+- dttm - dates and times, allows extracting
+
+Lubridate lib (part of Tidyverse)
+```{r}
+library(lubridate)
+```
+Get today's date.
+The way things are stored and the way things are presented are not always the same.
+```{r}
+today()
+```
+```{r}
+class(today())
+```
+
+```{r}
+now()
+```
+```{r}
+class(now())
+```
+
+# Reading in and converting times and dates
+
+## Strings
+Most common problem
+Lubridate has 3 functions depending on the order of the date in the string
+ - ymd
+ - mdy
+ - dmy
+ 
+Convert from class string to Date.
+
+```{r}
+ymd("2019-01-19")
+mdy("January 9th, 2019")
+class(dmy("09-Jan-2019"))
+
+# For non-English language, change locale
+dmy("09 janvier 2019", locale = "")
+# accepts numeric
+ymd(20190119)
+```
+
+```{r}
+ymd_hms("2019-01-09 10:08:26")
+class(ymd_hms("2019-01-09 10:08:26"))
+```
+
+```{r}
+ymd_hm("2019-01-09 10:08")
+ymd_h("2019-01-09 10")
+```
+
+Remember that _hm and _h attach 00 mins or seconds, which can sometimes cause problem.
+
+Task
+```{r}
+mdy("March 12th, 2005")
+ymd("2018-06-23")
+ymd_hms("2017-04-29 11:43:02")
+dmy("02-Sep-2002")
+# "2001-01-07 7" I would set this to year 2001 unless I knew the format.  
+mdy_hm("August 1st, 2019 08:13")
+```
+
+as_date = bad practice
+
+## Components
+```{r}
+library(tibble)
+library(tidyverse)
+
+# create some date component data to practice with 
+date_components <- tibble(id = 1:5, year = 2013 , month = 3:7, day = 1, hour = 5, minute = c(0, 5, 15, 43, 12))
+date_components
+```
+```{r}
+date_components %>% 
+  mutate(
+    date = make_datetime(
+      year = year, 
+      month = month, 
+      day = day, 
+      hour = hour, 
+      min = minute)
+  )
+```
+
+Task
+
+```{r}
+library(nycflights13)
+data(flights)
+```
+
+Make a column called departure which makes a column of departure date and time
+```{r}
+flights %>% 
+  mutate(departure = make_datetime(
+    year = year,
+    month = month,
+    day = day,
+    hour = hour,
+    min = minute
+  ))
+```
+
+## Existing date time objects
+
+```{r}
+class(as_datetime(today()))
+```
+
+```{r}
+as_date(now())
+```
+
+Task
+```{r}
+last_event <- "2019-07-01 04:23:12"
+```
+
+Turn the variable last_event into a date-time, and then extract just the date component.
+```{r}
+# Make a date time from character vector
+last_event <- ymd_hms(last_event)
+class(last_event)
+
+# Extract date from datetime
+date(last_event)
+as_date(last_event)
+```
+
+# Extracting date time components
+
+```{r}
+year(today())
+# label = T -> return label not number, abbr = F -> return full name, not abbreviation
+month(today(), label = T, abbr = F)
+# Day of the month
+mday(today())
+# Day of the year (ordinal day)
+yday(today())
+wday(today(), week_start = 1, label = T, abbr = F)
+date(now())
+hour(now())
+minute(now())
+second(now())
+```
+
+Task
+```{r}
+our_datetime <- ymd_hms("2020-02-29 21:04:56")
+
+year(our_datetime)
+month(our_datetime, label = T)
+mday(our_datetime)
+yday(our_datetime)
+wday(our_datetime, label = T, abbr = F)
+date(our_datetime)
+hour(our_datetime)
+minute(our_datetime)
+second(our_datetime)
+```
+
+# Time spans
+4 classes of time span:
+Period - e.g. years(1) = 1y 0m 0d 0H 0M 0S.
+  Takes into account leap year and time difference
+Duration - e.g. dyears(1) = 31557600s
+Difftime
+Interval
+
+durations, which represent an exact number of seconds.
+periods, which represent human units like weeks and months.
+intervals, which represent a starting and ending point.
+
+One year after today
+```{r}
+today() + years(1)
+today() + dyears(1)
+```
+
+One year after 1st June 2020
+```{r}
+ymd("2020-01-01") + years(1)
+ymd("2020-01-01") + dyears(1)
+```
+
+```{r}
+now() + months(6)
+now() + dmonths(6)
+
+now() + days(150)
+now() + ddays(150)
+```
+
+```{r}
+# difftime
+today() - ymd("1990-06-26")
+class(today() - ymd("1990-06-26"))
+
+# period
+as.period(today() - ymd("1990-06-26"))
+class(as.period(today() - ymd("1990-06-26")))
+
+# duration
+as.duration(today() - ymd("1990-06-26"))
+class(as.duration(today() - ymd("1990-06-26")))
+```
+
+Task
+Let’s use the date ‘25-12-2021’ (Christmas this year). Calculate the following:
+```{r}
+xmas_2021 <- dmy(251221)
+```
+How long is it from now until Christmas?
+341 days
+29462400s (~48.71 weeks)
+```{r}
+xmas_2021 - today()
+```
+```{r}
+as.duration(xmas_2021 - today())
+```
+
+What date would 6 months after Christmas be?
+2022-06-25
+```{r}
+xmas_2021 + months(6)
+```
+```{r}
+xmas_2021 + dmonths(6)
+```
+
+What date would a fortnight before Christmas be?
+2021-12-11
+```{r}
+xmas_2021 - weeks(2)
+```
+```{r}
+xmas_2021 - dweeks(2)
+```
+
+What does adding on 36 hours after Christmas give you?
+"2021-12-26 12:00:00 UTC"
+```{r}
+xmas_2021 + hours(36)
+```
+```{r}
+xmas_2021 + dhours(36)
+```
+
+## Interval
+the most precise type of time span, we give it a start and an end.
+
+Make an interval
+```{r}
+job_start <- ymd("2019-06-21")
+job_end <- ymd("2020-06-21")
+
+job <- interval(job_start, job_end)
+job_start %--% job_end
+class(job)
+```
+
+manipulate intervals
+```{r}
+int_start(job)
+int_end(job)
+int_flip(job)
+int_shift(job, by = ddays(1))
+int_shift(job, by = weeks(10))
+```
+
+compare intervals
+```{r}
+biking_club <- interval(ymd(20190621), ymd(20200101))
+university <- interval(ymd(20041001), ymd(20080601))
+```
+
+```{r}
+# Does any one day overlap in these intervals?
+int_overlaps(job, biking_club)
+# Do any start or ends in one align with start or end point of the other?
+int_aligns(job, biking_club)
+```
+
+Task
+```{r}
+datetime1 <- ymd_hms("2011-06-04 12:03:01") 
+datetime2 <- ymd_hms("2011-07-25 14:24:06")
+
+datetime3 <- ymd_hms("2011-07-20 13:23:21")
+datetime4 <- ymd_hms("2011-08-31 15:02:11")
+
+interval1 <- interval(datetime1, datetime2)
+interval2 <- interval(datetime3, datetime4)
+```
+
+Use the setdiff() function to find the part of interval1 that is not in interval2.
+Is interval1 %within% interval2? If not, make an interval3 that is %within% interval2
+
+```{r}
+# What of first argument is not contained in second argument?
+setdiff(interval1, interval2)
+setdiff(interval2, interval1)
+
+# are all the dates of first argument contained within the second argument?
+interval1 %within% interval2
+
+interval3 <- interval(ymd("2011-07-30"), ymd("2011-08-15"))
+interval3 %within% interval2
+```
+

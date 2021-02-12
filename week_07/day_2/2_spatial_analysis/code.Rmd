@@ -1,0 +1,162 @@
+```{r}
+library(sf)
+library(tidyverse)
+# library(ggplot2)
+```
+# Reading in spatial data
+```{r}
+north_carolina <- st_read(system.file("shape/nc.shp", package = "sf"))
+
+class(north_carolina)
+```
+
+See the geometries
+```{r}
+nc_geometry <- st_geometry(north_carolina)
+nc_geometry[[1]]
+```
+
+# Plot data
+```{r}
+plot(north_carolina)
+
+# Plot one variable of one observation
+plot(north_carolina[1, 1])
+
+# Plot one variable of all observations
+plot(north_carolina[ ,1])
+```
+
+# Task
+Have a look through some of the variables within your north_carolina dataset, and see if you can create a spatial plot using the techniques above.
+```{r}
+plot(north_carolina["BIR74"])
+plot(north_carolina["BIR79"])
+plot(north_carolina[2])
+plot(north_carolina[1:10, 9])
+```
+
+# Plotting sf in ggplot
+```{r}
+ggplot(north_carolina) +
+  aes(fill = SID74) +
+  geom_sf() +
+  theme_bw()
+```
+
+```{r}
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(rgeos)
+```
+
+```{r}
+world <- ne_countries(scale = "medium", returnclass = "sf")
+class(world)
+```
+
+# Just plot shape
+```{r}
+ggplot(world) +
+  geom_sf(colour = "black", fill = "forest green")
+```
+# Plot with a variable
+```{r}
+ggplot(world) +
+  aes(fill = pop_est) +
+  geom_sf() +
+  scale_fill_viridis_c(option = "plasma", trans = "sqrt")
+```
+
+# Task
+Recap your knowledge from ggplot week, and set your geom_sf aesthetic to be filled with the estimated gdp (gdp_md_est variable). Extra points if you make your map colour blind friendly!
+What does your plot tell you? What does it tell you compared to the population?
+```{r}
+# The palette with black:
+cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+world %>% 
+  ggplot() +
+  aes(fill = gdp_md_est) +
+  geom_sf() +
+  scale_fill_viridis_c(option = "plasma", trans = "sqrt")
+```
+
+```{r}
+italy <- world %>% 
+  filter(name == "Italy")
+
+ggplot(italy) +
+  geom_sf() +
+  ggtitle(italy$name)
+```
+
+# Calculaing distance
+
+UTM - a system for assigning coordinates to a location on the earth
+```{r}
+# transform points from degrees to meters.
+country_transformed <- st_transform(italy, 3003)
+```
+
+
+```{r}
+# grid of region of interest
+grid <- st_make_grid(country_transformed,
+                     cellsize = 50000,
+                     what = "centers")
+plot(grid)
+```
+
+
+```{r}
+# convert our shape from a polygon to points
+country_line <- st_cast(country_transformed, "MULTILINESTRING")
+```
+
+```{r}
+distance <- st_distance(country_line, grid)
+
+distance
+```
+
+# Zoom in our map
+```{r}
+ggplot(world) +
+  geom_sf(aes(fill = pop_est)) +
+  coord_sf(xlim = c(-102.15, -74.12), ylim = c(7.65, 33.97), expand = FALSE)
+```
+
+# Task
+Have a play around with your coordinate systems, and try to plot a different region of the world. *Hint: read the help documentation for coord_sf.
+```{r}
+ggplot(world) +
+  aes() +
+  geom_sf(fill = "dark red") +
+  coord_sf(
+    xlim = c(110, 122),
+    ylim = c(-37, -16.5),
+    expand = FALSE
+  ) +
+  ggtitle("The West Coast of Australia")
+```
+
+# Labelling
+```{r}
+# Find centres of the shape (this gives a warning about calculating centres of longitude and latitude)
+world_centres <- st_centroid(world$geometry)
+
+# get the coordinates of these centres
+world_coordinates <- st_coordinates(world_centres)
+
+# add these to our data
+world_points <- cbind(world, world_coordinates)
+```
+
+```{r}
+ggplot(world_points) +
+  geom_sf(fill = "grey") +
+  coord_sf(xlim = c(-102.15, -74.12), ylim = c(7.65, 33.97), expand = FALSE) +
+  geom_text(aes(x = X, y = Y, label = name), color = "darkblue", fontface = "bold")
+```
+

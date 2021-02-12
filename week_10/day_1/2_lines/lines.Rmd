@@ -1,0 +1,94 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Describing the line of a correlation
+
+y = a * x + b
+
+a is the gradient. How many units of y do we travel for every unit we move along x?
+
+b is the intercept. Where does the line cross the y -axis?
+
+```{r}
+library(tidyverse)
+
+# set up a line function
+line <- function(x, a, b) {
+  return(a * x + b)
+}
+
+# set up x vector and use line function to compute y values
+data <- tibble(
+  x = seq(-5, 5, 0.1),
+          y = line(x, a = -7, b = 7)
+)
+
+data %>% 
+  ggplot() +
+  aes(x, y) +
+  geom_line(col = "red") +
+  geom_vline(xintercept = 0) +
+  geom_hline(yintercept = 0)
+```
+
+# Fitting a line to data
+
+```{r}
+noisy_line <- read_csv("noisy_line.csv")
+
+noisy_line_plot <- noisy_line %>% 
+  ggplot() +
+  aes(x, y) +
+  geom_point()
+
+noisy_line_plot
+```
+
+## Calculate the centroid position
+```{r}
+centroid <- noisy_line %>% 
+  summarise(
+    x = mean(x),
+    y = mean(y)
+  )
+centroid
+```
+
+
+```{r}
+# Add centroid to noisy_line_plot
+noisy_line_plot <- noisy_line_plot +
+  geom_point(aes(x = centroid$x, y = centroid$y), col = "red", size = 5)
+noisy_line_plot
+```
+
+## Reverse the equation to find b
+
+if mean(y) = a * mean(x) + b
+b = mean(y) - a * mean(x)
+
+```{r}
+## Build a function to find b
+
+get_intercept <- function(slope, centroid_x, centroid_y) {
+  return(centroid_y - slope * centroid_x)
+}
+```
+
+```{r}
+## Try some slopes
+slope = 2.1
+
+noisy_line_plot +
+  geom_abline(slope = slope, intercept = get_intercept(slope, centroid$x, centroid$y))
+```
+
+# Using built in functions to fit a line
+
+```{r}
+noisy_line_plot +
+  geom_smooth(method = "lm", se = FALSE)
+```
+

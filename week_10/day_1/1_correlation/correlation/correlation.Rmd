@@ -1,0 +1,161 @@
+---
+title: "Correlation"
+---
+
+```{r}
+library(tidyverse)
+library(janitor)
+
+```
+
+```{r}
+mtcars %>% 
+  select(wt, mpg) %>% 
+  glimpse()
+```
+
+```{r}
+mtcars %>% 
+  ggplot() +
+  aes(x = wt, y = mpg) +
+  geom_point()
+```
+
+# Covariance
+
+```{r}
+mtcars %>% 
+  summarise(covariance = cov(mpg, wt))
+```
+A negative covariance value indicates that variables are negatively correlated.
+
+# Pearson's Coefficient
+
+```{r}
+noisy_bivariate <- function(noise = 1, gradient = 1) {
+  x <- runif(n = 200, min = 0, max = 10)
+  y = gradient * x + 10
+  y_scatter <- noise * 4 * rnorm(n = 200)
+  y <- y + y_scatter
+  data <- tibble(x,y,)
+  
+  r <- round(cor(x,y), 4)
+  
+  title <- paste(
+    "noise = ", noise,
+    ", gradient = ", gradient,
+    ", r = ", r
+  )
+  
+  data %>% 
+    ggplot(aes(x = x, y = y)) +
+    geom_point() +
+    xlim(0, 10) +
+    ylim(min(c(min(y), 0)), max(c(max(y), 10))) +
+    ggtitle(title)
+} 
+```
+
+```{r}
+noisy_bivariate(1, -1)
+```
+
+# JD Evans scale for r magnitude and meaning
+
+|  magnitude of $r_{xy}$  |  strength of correlation  |
+|-------------------------|---------------------------|
+| 0                       | none                      |
+| 0.01 - 0.19             | very weak                 |
+| 0.20 - 0.39             | weak                      |
+| 0.40 - 0.59             | moderate                  |
+| 0.60 - 0.79             | strong                    |
+| 0.80 - 0.99             | very strong               |
+| 1                       | perfect                   |
+
+# Coefficient of wt and mpg in mtcars
+
+```{r}
+mtcars %>% 
+  summarise(correlation = cor(x = wt, y = mpg))
+```
+
+A strong negative correlation.
+mpg - mean(mpg) decreases as wt - mean(wt) decreases.
+mpg decreases as weight decreases.
+
+# Why we must always use the cor function in combination with visualisation
+
+```{r}
+anscombe %>% 
+  ggplot(aes(x = x1, y = y1)) +
+  geom_point()
+```
+
+```{r}
+anscombe %>% 
+  summarise(r = cor(x1, y1))
+```
+
+```{r}
+anscombe %>% 
+  ggplot(aes(x = x2, y = y2)) +
+  geom_point()
+```
+
+```{r}
+anscombe %>% 
+  summarise(r = cor(x2, y2))
+```
+
+This r score does not give us an indication of the negative sloping when x > 11.
+This is a non-linear trend so Pearson correlation is not suitable. We could use Spearman correlation instead
+
+```{r}
+anscombe %>% 
+  ggplot(aes(x = x3, y = y3)) +
+  geom_point()
+```
+This is a near perfect correlation, but the wide outlier brings the r score lower.
+
+```{r}
+anscombe %>% 
+  summarise(r = cor(x3, y3))
+```
+
+```{r}
+anscombe %>% 
+  ggplot(aes(x = x4, y = y4)) +
+  geom_point()
+```
+
+```{r}
+anscombe %>% 
+  summarise(r = cor(x4, y4))
+```
+
+The outlier is so wide that it makes the non-correlated data look overall like a positive correlation in a Pearson's coefficient calculation.
+
+# Third variable / confounding variable
+
+when another facor causes the change in the two variables we ae exploring.
+
+# The directionality problem
+
+Which variable is dependent on the other?
+
+# Randomised Controlled Experiment
+
+This is the best test to prove causation
+
+# Hill's criteria of causality
+
+* **Strength:** A relationship is more likely to be causal if the correlation coefficient is large and statistically significant.
+* **Consistency:** A relationship is more likely to be causal if it can be replicated.
+* **Specificity:** A relationship is more likely to be causal if there is no other likely explanation.
+* **Temporality:** A relationship is more likely to be causal if the effect always occurs after the cause.
+* **Gradient:** A relationship is more likely to be causal if a greater exposure to the suspected cause leads to a greater effect.
+* **Plausibility:** A relationship is more likely to be causal if there is a plausible mechanism between the cause and the effect.
+* **Coherence:** A relationship is more likely to be causal if it is compatible with related facts and theories.
+* **Experiment:** A relationship is more likely to be causal if it can be verified experimentally.
+* **Analogy:** A relationship is more likely to be causal if there are proven relationships between similar causes and effects.
+

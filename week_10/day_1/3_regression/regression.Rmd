@@ -1,0 +1,167 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+
+height <- c(176, 164, 181, 168, 195, 185, 166, 180, 188, 174)
+weight <- c(82, 65, 85, 76, 90, 92, 68, 83, 94, 74 )
+sample <- tibble(
+  weight,
+  height
+)
+
+sample %>%
+  ggplot(aes(x = weight, y = height)) +
+  geom_point()
+```
+
+# Write a function to find the line
+
+```{r}
+find_line <- function(x, b0, b1) {
+  return(b0 + x * b1)
+}
+```
+
+# Set slope to 1 and intercept to 95 and calculate fitted heights for our data
+
+```{r}
+sample <- sample %>% 
+  mutate(fit_height = find_line(weight, b0 = 95, b1 = 1))
+```
+
+# Plot fitted heights, fitted line and sample data
+
+```{r}
+sample %>% 
+  ggplot() +
+  aes(x = weight, y = height) +
+  geom_point() +
+  geom_point(aes(x = weight, y = fit_height), shape = 1) +
+  geom_abline(slope = 1, intercept = 95, col = "red") +
+  geom_segment(aes(xend = weight, yend = fit_height), alpha = 0.5)
+```
+
+These vertical lines from the fitted lines to the recorded values show us the residual, the difference between the fitted height and the observed height.
+
+# Least Squares Method
+
+```{r}
+sample <- sample %>% 
+  mutate(residual = height - fit_height)
+sample
+```
+
+When we fit a linear model to the data, we vary the intercept and the slope to make the residuals as small as possible.
+
+# Summing the residuals does not work because the positive and negative values cancel out one another.
+```{r}
+sample %>% 
+  summarise(sum_residuals = sum(residual))
+```
+
+# Squaring the residuals makes all values positive so we can compare the size of the sum of the residuals across different lines
+
+```{r}
+sample <- sample %>% 
+  mutate(square_residual = residual^2)
+sample
+
+sample %>% 
+  summarise(sum_square_residuals = sum(square_residual))
+```
+
+# Simple linear regression (lm method)
+
+What we have done above is what R and ggplot use when finding a smoothed line with the lm method.
+With the lm method, programmed algorithms find th fit with the smallest sum of squared residuals
+
+```{r}
+model <- lm(formula = height ~ weight, data = sample)
+model
+```
+
+Same as
+```{r}
+new_model <- lm(formula = sample$height ~ sample$weight)
+new_model
+```
+
+# Use fitted to get fitted values from a linear regression model
+```{r}
+test <- fitted(model)
+```
+This gives us a set of numeric values
+
+# Use predict to get estimated outcome values for an explanatory variable value that was not included in the dataset.
+```{r}
+# make a df with the value in it
+predict_at <- tibble(weight = c(78, 90, 177))
+
+# predict height at the predict_at weights
+
+predict(model, newdata = predict_at)
+```
+
+Our model predicts that a person of weight 78 kg will have a height of 17.99cm
+
+# Using modelr in the tidyverse
+
+# using modelr to find fitted heights and residuals
+```{r}
+library(modelr)
+
+sample <- sample %>% 
+  select(-c(fit_height, residual, square_residual)) %>% 
+  add_predictions(model) %>% 
+  add_residuals(model)
+
+sample
+```
+
+# Plotting fitted lin with modelr
+```{r}
+sample %>% 
+  ggplot() +
+  aes(x = weight) +
+  geom_point(aes(y = height)) +
+  geom_line(aes(y = pred), col = "red")
+```
+
+# We can plot this line without modelr just using our model and abline
+But this can only give us a line, not predicted values at specific points.
+```{r}
+sample %>% 
+  ggplot() +
+  aes(x = weight, y = height) +
+  geom_point() +
+  geom_abline(
+    intercept = model$coefficients[1],
+    slope = model$coefficients[2],
+    col = "red"
+  )
+```
+
+# Get predicted heights for weights from 50 - 120kg
+```{r}
+weights_predict <- tibble(weight = 50:120) %>% 
+  add_predictions(model) 
+
+weights_predict %>% 
+  ggplot() +
+  aes(x = weight, y = pred) +
+  geom_point()
+
+```
+
+# The regression coefficient
+
+b1, or the slope, tells us that for each 1 unit change in x, y changes by a set amount.
+In our example model, a 1kg increase in weight changes the predicted height by 0.9336cm
+```{r}
+model
+```
+
