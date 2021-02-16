@@ -1,0 +1,133 @@
+```{r}
+library(CodeClanData)
+savings
+```
+
+```{r}
+model_overfit <- lm(savings ~ ., data = savings)
+summary(model_overfit)
+```
+```{r}
+model_wellfit <- lm(savings ~ salary + age + retired, data = savings)
+summary(model_wellfit)
+```
+
+```{r}
+model_underfit <- lm(savings ~ salary, data = savings)
+summary(model_underfit)
+```
+
+# Parsimonious measures of good fit
+Or penalised measures of fit
+Measures which take number and relevance of variables into account.
+
+Adjusted R squared. R squared relative to the number of variables included
+AIC - Akaike Information Criterion
+BIC - Bayes Information Criterion
+
+Adj R squared, the higher the better
+```{r}
+summary(model_overfit)$adj.r.squared
+summary(model_wellfit)$adj.r.squared
+summary(model_underfit)$adj.r.squared
+```
+AIC, the lower the better
+```{r}
+AIC(model_overfit)
+AIC(model_wellfit)
+AIC(model_underfit)
+```
+BIC - the lower the better
+```{r}
+BIC(model_overfit)
+BIC(model_wellfit)
+BIC(model_underfit)
+```
+
+```{r}
+library(tidyverse)
+broom::glance(model_overfit) %>% 
+  select(adj.r.squared, AIC, BIC)
+```
+
+# Test and Training Sets
+
+Make a test and training set.
+```{r}
+library(mosaicData)
+
+# count number of rows in data
+n_data <- nrow(RailTrail)
+
+# generate a set of random numbers to get indices for test data
+test_index <- sample(1:n_data, size = n_data * 0.1)
+
+# split into test and training sets
+test_set <- slice(RailTrail, test_index)
+train_set <- slice(RailTrail, -test_index)
+```
+
+Fit model to training data
+```{r}
+model <- lm(volume ~ avgtemp, data = train_set)
+```
+
+Make predictions for test data
+```{r}
+predictions_test <- predict(model, newdata = test_set)
+predictions_test
+```
+
+Calculate mean squared error
+```{r}
+mean((predictions_test - test_set$avgtemp)**2)
+```
+
+# K fold cross validation
+Split the data into folds, usually 10.
+Build 10 models, trained on 9 folds and tested on one fold each time.
+Average the error across all the models.
+* note this uses a lot of computing power.
+
+Code using caret
+```{r}
+library(caret)
+
+cv_10_fold <- trainControl(method = "cv", number = 10, savePredictions = TRUE)
+
+model <- train(savings ~ .,
+               data = savings,
+               trControl = cv_10_fold,
+               method = "lm")
+```
+
+Extract all predictions
+```{r}
+model$pred
+```
+
+Measures of error across each fold
+```{r}
+model$resample
+```
+
+Calculate average error to compare this model(model_overfit) with other models.
+RMSE
+```{r}
+mean(model$resample$RMSE)
+mean(model_well$resample$RMSE)
+
+```
+Average r squared
+```{r}
+mean(model$resample$Rsquared)
+mean(model_well$resample$Rsquared)
+```
+
+```{r}
+model_well <- train(savings ~ salary + age + retired,
+               data = savings,
+               trControl = cv_10_fold,
+               method = "lm")
+```
+

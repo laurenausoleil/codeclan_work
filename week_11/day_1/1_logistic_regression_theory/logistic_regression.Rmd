@@ -1,0 +1,219 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(janitor)
+```
+
+```{r}
+mortgage_data <- read_csv("data/mortgage_applications.csv") %>% 
+  clean_names()
+
+head(mortgage_data)
+```
+TU score - TransUnion score ~= a credit score from 0:710
+
+# Binary target variables
+Target Variable <- Accepted
+
+```{r}
+library(GGally)
+
+ggpairs(mortgage_data)
+```
+
+# Plot TU score against accepted
+```{r}
+score_plot <- ggplot(mortgage_data) +
+  aes(x = tu_score, y = as.integer(accepted)) +
+  # use jitter to spread out points on a binary axis to aid visualisation.
+  geom_jitter(shape = 1, position = position_jitter(h = 0.03))
+
+score_plot
+```
+
+# Try linear regression
+```{r}
+# model with accepted varying by tu score
+mortgage_data_lin_model <- lm(as.integer(accepted) ~ tu_score, data = mortgage_data)
+```
+```{r}
+library(modelr)
+```
+```{r}
+# Tibble with predicted acceptance for each TU score
+predict_lin <- tibble(tu_score = seq(0, 710, 1)) %>% 
+  add_predictions(mortgage_data_lin_model)
+```
+```{r}
+# visualise modelled predictions with actual results
+score_plot +
+  geom_line(data = predict_lin,
+            aes(x = tu_score, y = pred), col = "red")
+```
+We can't have a negative probability!
+Empirical probability of being accepted for a mortgage with a TU score of 594 - 3/5, 0.6.
+```{r}
+mortgage_data %>% 
+  filter(tu_score == 594)
+```
+
+# Logistic probability
+Lets us predict the probability of a binary outcome.
+The logistic function provides a far better model for the estimated probability of ‘success’ on a binary outcome.
+Cannot go below zero
+
+```{r}
+logistic <- function(x, L = 1, k = 1, x0 = 0 ){
+  return(L / (1 + exp(-k * (x - x0))))
+}
+```
+
+
+## L = maximum height of curve
+Increasing maximum height of curve affects how steeply the curve changes
+## x0 = Sigmoid's Midpoint
+x0 affects the location of the ‘step’ in the function. To be precise, f(x0)=0.5, so positive values shift f(x) to the right, and negative values shift it to the left.
+Affects where the curve starts and stops.
+## k = the logistic growth rate or steepness of the curve.
+Increasing k means we spend more time at our highest and lowest points and have a steeper line between highest and lowest.
+Negative k, when a value is high we want low likelihood (e.g. higher debt -> lower likelihood of mortgage)
+
+# Logit function
+
+ln(odds of x) = b0 + b1 * x
+
+The log of the fitted pobability of x = log of the odds of success = log of the fitted probability divided by 1 minus the fitted probability
+
+```{r}
+logit <- function(x){
+  return(log(x/(1-x)))
+}
+
+logit_data <- tibble(p = seq(0.001, 0.999, 0.001)) %>%
+  mutate(logit = logit(p))
+
+ggplot(logit_data, aes(x = p, y = logit)) + 
+  geom_line()
+```
+Calling logit on our p values.
+y = 0:1 (the default values for L)
+logit 0 crosses p at 0.5 (the default value for sigmoid centre)
+
+# Building a logistic regression model
+The argument family = binomial(link = 'logit') is what tells glm() to perform a logistic regression.
+```{r}
+mortgage_data_logreg_model <- glm(accepted ~ tu_score, data = mortgage_data, family = binomial(link = 'logit'))
+mortgage_data_logreg_model
+```
+
+Plot the estimated probability as a function of tu score
+```{r}
+predict_log <- tibble(tu_score = seq(0, 710, 1)) %>%
+              # argument type = 'response' is used in glm models 
+              add_predictions(mortgage_data_logreg_model, type = 'response') 
+score_plot + 
+   geom_line(data = predict_log, aes(x = tu_score , y = pred), col = 'red')
+```
+
+# Interpreting b1 for continuous predictors
+
+See prediction at 594
+```{r}
+tibble(tu_score = 594) %>%
+              add_predictions(mortgage_data_logreg_model, type = 'response') 
+```
+
+Let’s get the odds of having an accepted application at a particular tu_score, say at a value 594.
+```{r}
+odds_at_594 <- tibble(tu_score = 594) %>% 
+  add_predictions(mortgage_data_logreg_model, type='response') %>%
+  mutate(odds = pred/(1-pred)) %>%
+  select(odds)
+
+odds_at_594
+
+```
+This is approximately 3-to-2 in favour of success.
+
+How do these odds change if we increase tu_score by, say, 50 points to 644? The maths above tells us the odds will change by a factor eb1×change in x=eb1×50. So we need to get coefficient btu_score from mortgage_data_logreg_model and then use it to work out the factor multiplying the odds.
+```{r}
+library(broom)
+
+# find b1 for tu_score
+b_tu_score <- tidy(mortgage_data_logreg_model) %>%
+  filter(term == "tu_score") %>%
+  select(estimate) 
+
+odds_factor <- exp(b_tu_score * 50)
+
+# let's see the odds factor
+odds_factor
+
+# calculate the odds at 594 + 50
+odds_at_644 <- odds_factor * odds_at_594
+odds_at_644
+```
+Big increase! The odds are now nearly 5-to-2 in favour. Let’s check if this is correct by getting the probability of acceptance at 644 and calculating the odds directly.
+
+```{r}
+tibble(tu_score = 644) %>%
+  add_predictions(mortgage_data_logreg_model, type='response') %>%
+  mutate(odds = pred/(1-pred)) %>%
+  select(odds)
+```
+Increasing your tu_score by 50 makes it 2.4 times more likely to get a mortgage
+
+Odds with a decrease of 50
+```{r}
+odds_factor <- exp(b_tu_score * -50)
+
+# let's see the odds factor
+odds_factor
+
+# calculate the odds at 594 - 50
+odds_at_544 <- odds_factor * odds_at_594
+odds_at_544
+```
+
+# Adding variables
+
+```{r}
+mortgage_data_multi_logreg_model <- glm(accepted ~ tu_score + employed+ age,
+                                        data = mortgage_data,
+                                        family = binomial(link = "logit"))
+
+tidy_out <- clean_names(tidy(mortgage_data_multi_logreg_model))
+glance_out <- clean_names(glance(mortgage_data_multi_logreg_model))
+```
+
+```{r}
+tidy_out
+```
+```{r}
+glance_out
+```
+
+# Interpreting b1/coefficient/gradient for categorical predictors
+
+Odds factor = e^b1 * difference
+
+Because we are dealing with a binary predictor, our difference is always 1 so odds_factors = e^b1
+
+```{r}
+# find b1 for employedTRUE
+b_employed_true <- tidy(mortgage_data_multi_logreg_model) %>% 
+  filter(term == "employedTRUE") %>% 
+  select(estimate)
+
+b_employed_true
+
+# find odds ration
+odds_ratio <- exp(b_employed_true)
+
+odds_ratio
+```
+Employment -> 4.39 times more likely to be accepted for a mortgage.

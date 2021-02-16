@@ -1,0 +1,134 @@
+# Logarithms
+Logarithm of a number gives a measurement of how “big” that number is in comparison to another number.
+So Logarithms provide the “scale”. They make it much easier to comprehend and compare very large numbers.
+Logarithms help us to handle non-linear values
+
+```{r}
+library(tidyverse)
+```
+Masses of the planets
+```{r}
+planets <- read_csv("~user/Downloads/planets.txt") %>% 
+  select(planet, mass) %>% 
+  add_row(planet = "Sun", mass = 1.989 * 10^30)
+```
+Plot masses
+```{r}
+planets %>% 
+  ggplot(aes(x = planet, y = mass)) +
+  geom_col()
+```
+The sun is so large that it makes our other values look identical (and like 0)
+```{r}
+planets %>% 
+  filter(planet != "Sun") %>% 
+  ggplot(aes(x = planet, y = mass)) +
+  geom_col()
+```
+If we convert to log we can see the sizes of the planets relative to one another
+```{r}
+planets %>% 
+  ggplot(aes(x = planet, y = mass)) +
+  geom_col() +
+  scale_y_continuous(trans = "log")
+```
+Note that this lokos much better with volume dataset here: https://towardsdatascience.com/logarithms-what-why-and-how-ff9d050d3fd7#:~:text=Log%20Transformation%20in%20Machine%20Learning&text=In%20such%20type%20of%20data,starting%20from%2012K%20to%20700K.
+
+## In ML
+Machine Learning practitioners often suggest taking the log of the continuous variable like Income, to improve the accuracy of the model.
+The reason behind doing this is that the “income” variable spans a very large range of values starting from 12K to 700K. If more data is available, this range can be even much more. There will be many instances of data where the income values will be on the lower side while there will be a few instances where the income is very large.
+If we are using the absolute value of income, the data instances with larger values will influence the model more due to their large “magnitude”
+Logarithm will solve the issue. If you take log of income, the resulting value will reduce the range of the variable while “preserving” the differences.
+
+# Exponentials
+
+A function returning a times b to the x
+```{r}
+exponential <- function(x, a, b) {
+  return(a * (b ** x))
+}
+
+data <- tibble(
+  x = seq(-3, 3, 0.1),
+  y1 = exponential(x, a = 1, b = 3),
+  y2 = exponential(x, a = 1, b = 4),
+  y3 = exponential(x, a = 1, b = 5),
+  y4 = exponential(x, a = 1, b = 1/3),
+  y5 = exponential(x, a = 1, b = 1/4),
+  y6 = exponential(x, a = 1, b = 1/5)
+)
+
+exp_plot <- ggplot(data, aes(x = x)) +
+  geom_line(aes(y = y1), col = "red") +
+  geom_line(aes(y = y2), col = "black") +
+  geom_line(aes(y = y3), col = "blue") +
+  geom_line(aes(y = y4), col = "red", linetype = "dashed") +
+  geom_line(aes(y = y5), col = "black", linetype = "dashed") +
+  geom_line(aes(y = y6), col = "blue", linetype = "dashed") +
+  geom_vline(xintercept = 0) +
+  ylab("y") 
+
+exp_plot
+```
+?Think about exponentials as a rate of change.
+
+# Negative exponentials
+
+b to the -3 = 1 divided by b to the 3
+3 to the -2 = 1 divided by 9
+
+# Muliplying Exponentials
+b to the x * b to the y = b to the (x + y)
+
+# Dividing Exponentials
+b to the x / b to the y = b to the (x - y)
+
+# Power Law
+(b to the x) to the y = b to the (x * y)
+
+# Logarithms
+
+Exp: y = base b to the power of x
+Log: log base b of y = x
+
+A log asks: to what power (or x) should I raise base, b, to get y?
+An exp asks: what is base, b, to the power, x?
+
+```{r}
+log(x = 16, base = 2)
+```
+
+```{r}
+log(x = 243, base = 3)
+```
+
+# Common Bases - e and 10
+
+## e
+Euler's number ~= 2.718281828
+
+the Exponential of x: exp(x) = Euler's number^x
+Natural logartithm: ln(y) = log base Euler's number of y = log(x = x, base = Euler's number)
+
+Euler's number - e
+```{r}
+# e ^ 1 = e**1 = e 
+exp(1)
+```
+
+The exponential of 2.5
+```{r}
+# e ^ 2.5
+exp(2.5)
+```
+
+The natural log (note that log in R defaults to natural log i.e. base of e)
+```{r}
+# log base e of 12.18249
+log(12.18249)
+```
+
+# Notes incomplete - lots of maths.
+
+
+

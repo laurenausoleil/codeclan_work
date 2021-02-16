@@ -1,0 +1,94 @@
+
+# Model Implementation
+
+Deployment means using a model to make practical decisions based on data.
+
+## Single-train Deployment
+
+Build -> Validation -> Deployment -> Detereoration -> Recalibrate or Retrain
+
+## Real-time Training
+
+Build, Validate and Deploy with on-going assessment and adjustment using real-time data
+
+# Considerations before implementation
+
+Is the model intuitive?
+Does it contain disallowed variables (or proxies for these?)
+Does the model rely unduly on one predictor?
+Is the production data identical to the development data?
+Does the production population look the same as the development population?
+   - compare score distributions from development data and recent production data
+   - Population Stability Index and Characteristic Stability Index
+Is it valid in all situations?
+Do I have sufficient documentation?
+  - Model Governance Documentation includes the context, the rationale of decisions, choice of algorithm, development population, target variable, validation, implementation instructions and restrictions.
+Can it be implemented in production? (does it need translated?)
+
+# Exporting a model with PMML (Predictive Modelling Markup Language)
+```{r}
+library(CodeClanData)
+library(pmml)
+
+# save the model
+# character variables need to be set up as factors
+savings_model <- lm(savings ~ salary + age + factor(retired), data = savings_train)
+
+# create pmml file
+savings_pmml <- pmml(savings_model)
+
+# view pmml object
+savings_pmml
+
+# save he file
+save_pmml(savings_pmml, "savings_model_export.xml")
+```
+
+# Model Performance Monitoring
+
+Check that the population hasn't changed significantly and that the model is still predicting target variables as expected.
+
+## The Score Distribution
+Compare the distribution of scores from a recent dataset to the development dataset
+
+## Population Stability Index
+How significiant is the shift in population? Is our mdoel still valid?
+
+## Characteristic Stability
+Measure changes in distributions of single variables
+
+## Model Discrimination
+Calculate the gini coefficient (a measure of the predictive power of the model) on a recent dataset and check this against the gini coefficient at build.
+
+## Accuracy
+Test the model's accuracy with a test set or cross validation of recent data.
+
+## If the model has deteriorated
+Find the root cause - what has changed in the real world before you adjust the model.
+
+# Model Governance
+
+Covers the model's lifecycle: transparent development, accurate implementation, rigorous monitoring and retiral.
+
+Most ML models need frequent: monitoring, data review, bench-marking, model inventory understanding and actionable contingency plans.
+
+## Pre-Implementation
+*Documentation*
+
+### Modelling Approach Rationale
+
+### Model Inventory
+
+The training and test datasets
+Model validation results
+Model versions
+Any metadata or additional artifacts required for a full audit trail
+Model approval records
+Model monitoring outputs
+
+# Post-Implentation
+
+Frequency of monitoring
+Understanding of model across the business
+Limitations of the model and potential fixes.
+Do we have the resources required to carry out a model rebuild/racalibration

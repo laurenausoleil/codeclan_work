@@ -1,0 +1,201 @@
+
+# Transformations
+
+For linear regression to be valid
+* the residuals must be independent of one another
+* the variance of the residuals is independent of x
+* the residuals are normally distributed around 0
+
+We can use transformation to make data which doesn't fit this suitabled for linear regression modelling.
+
+```{r}
+library(tidyverse)
+library(janitor)
+
+# Read in data
+income <- read_csv("data/income_per_person_gdppercapita_ppp_inflation_adjusted.csv") %>% clean_names()
+life_expectancy <- read_csv("data/life_expectancy_years.csv") %>% clean_names()
+
+# Select 2018 as year of interest and join data together
+income_life <- income %>% 
+  select(country, x2018) %>% 
+  rename(income_2018 = x2018) %>% 
+  full_join(life_expectancy, by = "country") %>% 
+  select(country, income_2018, x2018) %>% 
+  rename(life_2018 = x2018) %>% 
+  na.omit()
+```
+
+Plot data
+```{r}
+ggplot(income_life, aes(x = income_2018, y = life_2018)) +
+  geom_point()
+```
+This is not linear data.
+
+# Use boxplots to see which variable is most problematic
+```{r}
+income_life %>% 
+  ggplot() +
+  geom_boxplot(aes(x = life_2018)) 
+
+income_life %>% 
+  ggplot() +
+  geom_boxplot(aes(x = income_2018))
+```
+
+Life is left skewed, but could be normal.
+Income is right skewed with a lot of outliers. It looks less normal.
+
+Check with a histogram
+```{r}
+ggplot(income_life, (aes(x = income_2018))) +
+  geom_histogram()
+```
+
+Let's see how a linear model would handle this data
+
+```{r}
+library(modelr)
+
+#fit model
+fit <- lm(life_2018 ~ income_2018, data = income_life)
+summary(fit)
+
+#add fit into dataframe
+income_life_model <- income_life %>%
+                    add_predictions(fit) %>%
+                    add_residuals(fit, var = "resid")
+
+# plot the linear model
+ggplot(income_life_model) +
+  geom_point(aes(x = income_2018, y = life_2018)) +
+  ylim(c(50,100)) +
+  geom_line(aes(x = income_2018, y = pred), col = "red") #plot regression line
+
+# plot the residuals
+ggplot(income_life_model) +
+  geom_point(aes(x = income_2018, y = resid)) +
+  geom_smooth(aes(x = income_2018, y = resid), method = "loess", col = "red", se = FALSE) + #plot regression line
+  geom_hline(yintercept = 0, linetype="dashed")
+```
+We can see that the model does not fit the data and we can see that there is a pattern in the residuals.
+
+# Try log of income to normalise income
+
+```{r}
+income_life %>% 
+  ggplot(aes(x = log(income_2018))) +
+  geom_histogram()
+
+income_life %>% 
+  ggplot(aes(x = log(income_2018))) +
+  geom_boxplot()
+```
+It looks more normal.
+
+# Types of log transformations
+
+* linear-linear: plot y against x
+* log-linear: plot y against log(x)
+* linear_log: plot log(y) against x
+* log-log: plot log(y) against log(x)
+
+# Do linear - log transformation on income_life
+```{r}
+# build model
+fit <- lm(life_2018 ~ log(income_2018), data = income_life)
+
+# add fit to df
+income_life_model <- income_life %>% 
+  add_predictions(fit) %>% 
+  add_residuals(fit, var = "resid")
+
+# plot model and data
+ggplot(income_life_model) +
+  geom_point(aes(x = log(income_2018), y = life_2018)) +
+  geom_line(aes(x = log(income_2018), y = pred), col = "red")
+  
+# Plot residuals
+income_life_model %>% 
+  ggplot() +
+  aes(x = income_2018, y = resid) +
+  geom_point() +
+  geom_smooth(method = "loess", col = "red", se = FALSE) +
+  geom_hline(yintercept = 0, linetype = "dashed")
+```
+
+Model looks good with the data.
+Residuals mostly around 0
+
+# Log - log transformation
+```{r}
+
+# build model
+fit <- lm(log(life_2018) ~ log(income_2018), data = income_life)
+
+# add fit to df
+income_life_model <- income_life %>% 
+  add_predictions(fit) %>% 
+  add_residuals(fit, var = "resid")
+
+# plot model and data
+ggplot(income_life_model) +
+  geom_point(aes(x = log(income_2018), y = log(life_2018))) +
+  geom_line(aes(x = log(income_2018), y = pred), col = "red")
+  
+# Plot residuals
+income_life_model %>% 
+  ggplot() +
+  aes(x = income_2018, y = resid) +
+  geom_point() +
+  geom_smooth(method = "loess", col = "red", se = FALSE) +
+  geom_hline(yintercept = 0, linetype = "dashed")
+```
+This maks very little difference compared to log-linear
+
+So transforming the data helps us to model the data. Depending on what type of transformation we do, we will interpret the coefficient differently.
+
+# Interpret the linear -log fit
+```{r}
+library(broom)
+```
+```{r}
+# linear-log
+fit <- lm(life_2018 ~ log(income_2018), data = income_life)
+
+# y = a + b * log(x)
+
+# get coeffs from model
+intercept <- tidy(fit) %>%
+            filter(term == "(Intercept)") %>%
+            pull(estimate)
+
+gradient <- tidy(fit) %>%
+            filter(term == "log(income_2018)") %>%
+            pull(estimate)
+
+# convert to a and b. No conversion needed in this model
+a <- intercept
+b <- gradient
+
+#fit transformation
+fitted <- tibble(fit_x = seq(min(income_life$income_2018), max(income_life$income_2018), by = 0.1)) %>% # get range of x values for fit
+          mutate(fitted_y_linlog = a + b * log(fit_x)) # insert a and b into untransformed equation
+ggplot() +
+  geom_point(data = income_life_model, aes(x = income_2018, y = life_2018)) +
+  geom_line(data = fitted, aes(x = fit_x, y = fitted_y_linlog), col = "red")
+```
+Now we can see that our linear-log regression model fits our original data.
+
+# Packages for variable transformations
+
+## HH::ladder
+Shows how different transformations affect correlation
+```{r}
+# Not currently loading.
+library(HH)
+
+ladde(life_2018 ~ income_2018, data = income_life)
+```
+

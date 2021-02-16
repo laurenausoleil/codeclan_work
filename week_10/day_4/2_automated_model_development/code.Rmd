@@ -1,0 +1,143 @@
+# Forward selection
+Add the next best variable one at a time
+
+# Backward selection
+Remove the least predictove variable one at a time.
+
+# Best subset selection
+Test all combinations of subsetted variables for the optimal model of each size.
+i.e. find the best possible model with one variable, then the best possible model with 2 variables, etc.
+The computing power increases exponentially with the number of predictors
+
+# Leaps Package
+```{r}
+library(tidyverse)
+library(CodeClanData)
+library(leaps)
+```
+
+Problems with leaps::regsubsets()
+
+It may include some, but not all, dummy variables.
+It may include interactions between variables not included in the model.
+Models can only be tested with penalised measures of fit.
+
+# Build a regression model for the charges of a policy.
+
+## Forward selection -
+```{r}
+regsubsets_forward <- regsubsets(charges ~ ., 
+                                 data = insurance, 
+                                 # up to 8 predictors (the full dataset)
+                                 nvmax = 8, 
+                                 method = "forward")
+
+summary(regsubsets_forward)
+```
+```{r}
+summary(regsubsets_forward)$which
+```
+
+Plot the penalised measure, such as adjusted r squard
+```{r}
+plot(regsubsets_forward, scale = "adjr2")
+```
+Highest adjr2 model contains age, bmi, children, smokeryes, regionsoutheasy and regionsouthwest
+
+Plot BIC (more parsimonious than adjr2)
+```{r}
+plot(regsubsets_forward, scale = "bic")
+```
+
+Lowest BIC score is for age, children and smokeryes
+
+Plot the R-squared value of the best model found at each number of variables
+```{r}
+plot(summary(regsubsets_forward)$rsq, type = "b")
+```
+We are not significantly increasing r squared beyond 3 variables.
+
+```{r}
+plot(summary(regsubsets_forward)$bic, type = "b")
+```
+Lowest BIC scores around 4 variables
+
+## Backward Selection
+
+```{r}
+regsubsets_backward <- regsubsets(charges ~ .,
+                                  data = insurance,
+                                  method = "backward")
+
+sum_regsubsets_backward <-summary(regsubsets_backward)
+sum_regsubsets_backward
+```
+
+```{r}
+sum_regsubsets_backward$which
+```
+
+```{r}
+plot(sum_regsubsets_backward$adjr2, type = "b")
+```
+
+```{r}
+regsubsets_exhaustive <- regsubsets(
+  charges ~ .,
+  data = insurance,
+  nvmax = 8,
+  method = "exhaustive"
+)
+sum_regsubsets_exhaustive <- summary(regsubsets_exhaustive)
+sum_regsubsets_exhaustive
+```
+```{r}
+plot(sum_regsubsets_exhaustive$adjr2, type = "b")
+```
+
+# We then need to calculate the significance of our variables to ensure that the variables included in the model are statistically significant.
+
+Check the specification of the 6 predictor model
+```{r}
+sum_regsubsets_exhaustive$which[6, ]
+```
+At this level, we include some but not all regions
+
+Check significance of region with ANOVA
+```{r}
+mod_without_region <- lm(charges ~ age + bmi + children + smoker, data = insurance)
+
+mod_with_region <-lm(charges ~ age + bmi + children + smoker + region, data = insurance)
+
+anova(mod_without_region, mod_with_region)
+```
+The model with region is not significantly better than the model with it so disregard region.
+
+Diagnostics
+```{r}
+par(mfrow = c(2,2))
+plot(mod_without_region)
+```
+
+Check the 4 predictor model
+```{r}
+sum_regsubsets_exhaustive$which[4, ]
+```
+age, bmi, children and smoker
+
+```{r}
+pred_model_4 <- lm(charges ~ age + bmi + children + smoker, data = insurance)
+
+summary(pred_model_4)
+```
+
+```{r}
+par(mfrow = c(2, 2))
+plot(pred_model_4)
+```
+These do not look good. We may need to do variable transformation before we do subset selection.
+
+# How to do best subset selection after variable transformation
+See notes
+
+
