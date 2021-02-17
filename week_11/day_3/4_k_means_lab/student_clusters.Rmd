@@ -1,0 +1,195 @@
+# Libraries
+```{r}
+library(tidyverse)
+library(CodeClanData)
+library(janitor)
+library(broom)
+library(factoextra)
+```
+
+# Assign and clean data
+```{r}
+students <- students_big %>% 
+  # Remove variables assumed to be unrelated to the brief
+  select(importance_reducing_pollution:importance_internet_access) 
+  # %>% 
+  # Scale data to make sds and withinss easier to read
+  # mutate_if(is.numeric, scale)
+```
+
+# Set seed for reproducibility
+```{r}
+set.seed(1234)
+```
+
+
+# Plot data to see potential patterns
+
+Add an average importance column
+```{r}
+students_avg <- students %>% 
+  mutate(
+    average_importance = rowMeans(select(., c("importance_reducing_pollution", "importance_conserving_water", "importance_recycling_rubbish", "importance_saving_enery", "importance_owning_computer", "importance_internet_access"))))
+```
+
+```{r}
+students_avg %>% 
+  ggplot() +
+  # tried with region and ageyears - no patterns or clusters
+  aes(x = importance_recycling_rubbish, y = average_importance) +
+  geom_point()
+```
+```{r}
+students_avg %>% 
+  ggplot() +
+  aes(x = importance_recycling_rubbish, y = importance_owning_computer) +
+  geom_point()
+```
+No obvious clusters in my visualisations
+
+# Visualise optimal number of clusters
+
+##Visualise withinss
+```{r}
+fviz_nbclust(students,
+             kmeans,
+             method = "wss",
+             nstart = 50)
+```
+No clear elbow, probably two or three clusters are best.
+
+## Visualise silhouettes
+```{r}
+fviz_nbclust(
+  students,
+  kmeans,
+  method = "silhouette",
+  nstart = 50
+)
+```
+Identifies 2 as optimal clusters although our maximum silhouette width is under 0.3 suggesting that our data is not well-suited to clustering.
+
+## Gap statistic
+```{r}
+fviz_nbclust(students,
+             kmeans,
+             method = "gap_stat",
+             nstart = 50,
+             k.max = 10)
+```
+Gap stat is suggesting 9 optimal clusters, with a trend line that looks like gap_stat will continue to increase with number of clusters.
+
+These results are making me think that my data is not suitable for clustering, but the optimal cluster size is probably 2.
+
+# Clustering with a k of 2
+
+```{r}
+clustered_students <- kmeans(students, centers = 2, nstart = 30)
+
+students_with_clusters <- augment(clustered_students, students) %>% 
+  mutate(
+    average_importance = rowMeans(select(., c("importance_reducing_pollution", "importance_conserving_water", "importance_recycling_rubbish", "importance_saving_enery", "importance_owning_computer", "importance_internet_access"))))
+```
+
+```{r}
+students_with_clusters %>% 
+  ggplot() +
+  aes(x = importance_recycling_rubbish, y = average_importance, group = .cluster, colour = .cluster) +
+  geom_point()
+```
+
+```{r}
+students_with_clusters %>% 
+  ggplot() +
+  aes(x = importance_recycling_rubbish, y = importance_owning_computer, colour = .cluster) +
+  geom_point()
+```
+This gives some suggestion that our two groups share similar scores for importance_recycling_rubbish
+
+```{r}
+tidy(clustered_students)
+```
+The means here show us that we have one group of students who care about environmental issues and one group who don't. The environmentally conscious group place less importance on owning a computer and having internet access than the environment neutral group.
+
+# Grouping students into two groups based on their response to environmental questions
+
+```{r}
+env_students <- students %>% 
+  select(-c(importance_owning_computer, importance_internet_access))
+
+clustered_env_students <- kmeans(env_students, centers = 2, nstart = 30)
+
+env_students_with_clusters <- augment(clustered_env_students, env_students)
+
+tidy(clustered_env_students)
+```
+
+# Visualise students grouped by importance placed on environmental issues
+
+```{r}
+env_students_with_clusters %>% 
+  ggplot() +
+  aes(x = importance_recycling_rubbish, y = importance_reducing_pollution, colour = .cluster) +
+  geom_point()
+```
+```{r}
+env_students_with_clusters %>% 
+  ggplot() +
+  aes(x = importance_recycling_rubbish, y = importance_conserving_water, colour = .cluster) +
+  geom_point()
+```
+```{r}
+env_students_with_clusters %>% 
+  ggplot() +
+  aes(x = importance_recycling_rubbish, y = importance_saving_enery, colour = .cluster) +
+  geom_point()
+```
+```{r}
+env_students_with_clusters %>% 
+  ggplot() +
+  aes(x = importance_saving_enery, y = importance_reducing_pollution, colour = .cluster) +
+  geom_point()
+```
+```{r}
+env_students_with_clusters %>% 
+  ggplot() +
+  aes(x = importance_saving_enery, y = importance_conserving_water, colour = .cluster) +
+  geom_point()
+```
+```{r}
+env_students_with_clusters %>% 
+  ggplot() +
+  aes(x = importance_reducing_pollution, y = importance_conserving_water, colour = .cluster) +
+  geom_point()
+```
+
+## Boxplots
+```{r}
+env_students_with_clusters %>% 
+  ggplot() +
+  aes(x = importance_recycling_rubbish, colour = .cluster) +
+  geom_boxplot()
+
+env_students_with_clusters %>% 
+  ggplot() +
+  aes(x = importance_reducing_pollution, colour = .cluster) +
+  geom_boxplot()
+
+env_students_with_clusters %>% 
+  ggplot() +
+  aes(x = importance_conserving_water, colour = .cluster) +
+  geom_boxplot()
+
+env_students_with_clusters %>% 
+  ggplot() +
+  aes(x = importance_saving_enery, colour = .cluster) +
+  geom_boxplot()
+```
+
+These visualisations show that our two groups have views as expected for environmental issues. 
+
+The more environmentally engaged group rate all 4 environmental issues as important, giving least importance to conserving water. This group could benefit from information about how water and energy production contributes to pollution. They may also want to learn more about how we measure climate impact or what actions they can take.
+
+The environmentally neutral group rate all 4 issues as important, but to a lesser extent than the engaged group. On all issues they have some outliers who do not consider these issues important so information about the effects of pollution, energy and water production and rubbish processing on the envionment could help this group to understand the issues and think about their impact.
+
+As both groups rated conserving water as least important, this information could be presented to the whole school.
