@@ -1,0 +1,137 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Agglomerative and Divisive
+
+# Dendogram
+A diagram which shows where the clusters are. A visual representation of how the data can be clustered.
+Gives you the options of how many clusters you can have.
+Longest bar indicates biggest difference
+
+# Distance Measures
+The choice of distance measures will depend on the dataset and context.
+Classical - geometrical difference between points on a graph.
+   e.g. Euclydian distance
+Correlation - how correlated are two data points.
+
+# Heirarchical clustering in R
+
+```{r, message = FALSE, warning = FALSE}
+library(tidyverse)
+library(cluster)
+library(factoextra)
+library(dendextend)
+```
+```{r}
+edu_data <- read_csv("data/education_usa.csv")
+head(edu_data)
+dim(edu_data)
+class(edu_data)
+```
+```{r}
+edu_data_scale <- edu_data %>%
+              janitor::clean_names() %>%
+              rename(state = x1) %>%
+              mutate_if(is.numeric, scale)
+edu_data_scale
+```
+```{r}
+edu_data_scale %>%
+  as_tibble() %>%
+  pivot_longer(-state, 
+               names_to = "type", 
+               values_to = "value") %>% #convert data to long format
+  group_by(type)%>%
+  summarise(mean = round(mean(value)), 
+            sd = sd(value))
+```
+# Calculate correlation distances
+```{r}
+library(corrplot)
+# can't plot categories on a correlation plot (needs numbers only)
+edu_numeric <- edu_data_scale %>%
+  select(-state)
+# create a correlation plot
+corrplot(cor(edu_numeric), method = "number", type = "lower")
+```
+
+# Calculate distances
+```{r}
+# take only high school and view the states. This is not scaled so can't be used for clustering. This is a not great method for seeing the character labels on the axes.
+diss_matrix <- edu_data %>%
+    column_to_rownames("X1") %>%
+              select(high_school) %>%
+              dist(method = "euclidean") 
+fviz_dist(diss_matrix)
+```
+
+# Build Dendogram on Scaled Data (no states visible)
+
+```{r}
+diss_matrix_scaled <- edu_data_scale %>% 
+  select(high_school) %>% 
+  dist(method = "euclidean")
+
+clusters <- diss_matrix_scaled %>% 
+  hclust(method = "complete")
+
+clusters_wo_scale <- diss_matrix %>% 
+  hclust(method = "complete")
+```
+
+Plot dendogram (only for heirarchical clustering)
+```{r}
+clusters %>% 
+  plot(cex = 0.5, hang = -5)
+
+clusters_wo_scale %>% 
+  plot(cex = 0.5, hang = -5)
+```
+
+# Explore different linkage methods
+
+```{r}
+# find clusters that minimise variance
+alt_clusters <- diss_matrix %>% 
+  hclust(method = "ward.D2")
+
+# get dendogram complete linkage
+clustering_dendogram <- clusters_wo_scale %>% 
+  as.dendrogram() %>% 
+  dendextend::set("labels_cex", 0.5)
+
+# dendogram variance method
+alt_clustering_dendogram <- alt_clusters %>% 
+  as.dendrogram() %>% 
+  dendextend::set("labels_cex", 0.5)
+```
+
+Compare different clusters
+```{r}
+# differences highlighted in red
+dend_diff(clustering_dendogram, alt_clustering_dendogram)
+```
+
+Interpretation and selection of clusters is context dependent.
+
+# Plot clusters
+```{r}
+plot(clusters_wo_scale, cex = 0.5, hang = -5)
+rect.hclust(clusters_wo_scale, k = 2, border = 2:5)
+```
+
+Based on this analysis, we found 2 clusters of high school completion rates across states.
+
+# Add which cluster a data point belongs to into data
+```{r}
+edu_clustered <- edu_data %>% 
+  mutate(high_school_cluster = cutree(clusters, 2))
+
+head(edu_clustered)
+```
+
+# Task
+Spend some time carrying out cluster analysis for your other variables community_college, college, and grad_school. What do you find for each variable? How many clusters do you choose, and why? What are your interpretations from your analysis?
+What happens if you include all your data and perform clustering? (i.e. do not subset the data as we did in one of our first steps). For this, you have moved from predicting a specific variable to predicting something you might denoted as “overall education rates”. Do you get different results when the clustering takes into account all your data at once for each state? How would you interpret your results?

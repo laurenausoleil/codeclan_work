@@ -1,0 +1,229 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+# K Means Clustering
+Useful when we don't know what our clusters should be.
+
+Randomly place k number of centres
+Assign each point to closest centre (Euclidean distance)
+Move centre to middle of cluster.
+Reassign data points to nearest centre.
+Move centre to the middle of new cluster.
+etc.
+When moving the centre to the centre of the last cluster does not lead to reassignment, we have found our centres and our clusters.
+
+```{r}
+library(tidyverse)
+library(janitor)
+
+edu_data <- read_csv("data/education_usa.csv")
+```
+# Cleaning
+Change state to rowname so functions run (because all data is numeric), but we can see state name instead of row number in our results
+```{r}
+edu_data <- edu_data %>% 
+  column_to_rownames("X1") %>% 
+  clean_names()
+edu_data
+```
+
+For interpretation and computing power, look only at high school and community college variables
+```{r}
+edu_data <- edu_data %>% 
+  select(c(high_school, community_college))
+edu_data
+```
+
+Plot to see potential clusters
+```{r}
+edu_data %>% 
+  ggplot() +
+  aes(x = high_school, y = community_college) +
+  geom_point()
+```
+Maybe this data doesn't cluster, but let's see what happens?
+
+# Scale data
+```{r}
+edu_data %>% 
+  as_tibble() %>% 
+  pivot_longer(cols = c(high_school, community_college),
+               names_to = "type",
+               values_to = "value") %>% 
+  group_by(type) %>% 
+  summarise(mean = round(mean(value)),
+            sd = sd(value))
+```
+
+Big differences in means and sd encourage us to scale
+
+```{r}
+edu_scale <- edu_data %>% 
+  mutate_if(is.numeric, scale)
+
+edu_scale %>% 
+  as_tibble() %>% 
+  pivot_longer(cols = c(high_school, community_college),
+               names_to = "type",
+               values_to = "value") %>% 
+  group_by(type) %>% 
+  summarise(mean = round(mean(value)),
+            sd = sd(value))
+```
+
+# Clustering
+```{r}
+# gives us the same result everytime
+set.seed(1234)
+```
+
+```{r}
+clustering_edu <- kmeans(edu_scale,
+                        # choose num clusters
+                        centers = 6,
+                        # set min number of iterations - best practice
+                        nstart = 30
+                        )
+
+clustering_edu
+```
+
+# Explore output
+```{r}
+library(broom)
+
+tidy(clustering_edu, col.names = colnames(edu_scale))
+```
+add clusters to data
+```{r}
+augment(clustering_edu, edu_data)
+```
+
+Plot a demonstration of a k means approach on our data
+```{r}
+library(animation)
+
+edu_scale %>% 
+  kmeans.ani(centers = 6)
+```
+
+See metrics. tot.withinss is a good measure of how close the points in our clusters are. (trade off between number of clusters and tot.withinss)
+```{r}
+glance(clustering_edu)
+```
+
+# Visualisation and Choosing cluster number
+
+Elbow Diagram
+```{r}
+# Set max number of clusters we want to look at 
+max_k <- 20 
+
+# build a table with a column for each of the k sizes with the results for clustering, the tidy, the glance and the augment.
+# i.e. store 20 different models in one table
+k_clusters <- tibble(k = 1:max_k) %>%
+  mutate(
+    kclust = map(k, ~ kmeans(edu_scale, .x, nstart = 25)), 
+    tidied = map(kclust, tidy),
+    glanced = map(kclust, glance),
+    augmented = map(kclust, augment, edu_data)
+  )
+
+# not very pretty as is, just a storage mechanism
+k_clusters
+```
+
+```{r}
+# expand the glance info.
+clusterings <- k_clusters %>% 
+  unnest(glanced)
+clusterings
+```
+
+Plot
+## An Elbow diagram of tot withinss.
+How close our clusters are at each number of clusters.
+```{r}
+ggplot(clusterings) +
+  aes(x = k, y = tot.withinss) +
+  geom_point() +
+  geom_line() +
+  scale_x_continuous(breaks = seq(1,20, by = 1))
+```
+
+Method to visualise our tot.withinss as we run kmeans.
+```{r}
+library(factoextra)
+
+fviz_nbclust(edu_scale,
+             kmeans,
+             method = "wss",
+             nstart = 25)
+```
+
+## Sillhouete
+A measure of fit for seperation distance between clusters.
+
+Mean Si of all points > 0.5 : very good.
+
+Silhouette scores
+Si > 0 : pretty good
+Si = 1: perfect
+Si < 0: bad
+Si = 0: unknown.
+
+```{r}
+library(cluster)
+
+#Chosen k=4 as an example 
+cluster_list_k4 <-  clusterings %>% 
+  unnest(augmented) %>%
+  filter(k == 4) %>%
+   select(.cluster) %>%
+    pull()
+
+sil <- silhouette(as.numeric(cluster_list_k4), 
+                  dist(edu_scale))
+
+fviz_silhouette(sil)
+```
+
+```{r}
+fviz_nbclust(edu_scale,
+             kmeans,
+             method = "silhouette",
+             nstart = 25)
+```
+
+## Gap statistic
+Bootstraps a null distribution with no clusters. Measure variation in entire dataset compared to variation in the clusters.
+```{r}
+fviz_nbclust(edu_scale,
+             kmeans,
+             method = "gap_stat",
+             nstart = 25,
+             k.max = 10)
+```
+
+# Visualise the selected 2 clusters
+
+```{r}
+clusterings %>% 
+  unnest(cols = augmented) %>% 
+  filter(k == 2) %>% 
+  ggplot() +
+  aes(x = high_school, y = community_college, colour = .cluster, label = .rownames) +
+  geom_point() +
+  geom_text(hjust = -0.1, vjust = -0.5, size = 3)
+```
+
+Find cluster centres
+```{r}
+clusterings %>% 
+  unnest(augmented) %>% 
+  filter(k == 2) %>% 
+  group_by(.cluster) %>% 
+  summarise(mean(high_school), mean(community_college))
+```
+
