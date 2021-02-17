@@ -1,0 +1,15 @@
+
+Clustering Lab
+Use k-means clustering to investigate potential relationships in the dataset students_big from the CodeClanData library.
+
+1 Part a
+We’ve been asked to create clusters of students for the answers to the ‘importance’ questions (where students rate how important they find certain topics on a scale from 0 to 1000, the higher the number the more important they think the issue is).
+
+
+If we are to use the mathematical methods (elbow etc.) what would your optimal value of k been? Do you think the data seems well suited to cluster.
+
+2 Part b
+We have been asked to cluster the variables which are asking about environmental questions (importance_reducing_pollution, importance_recycling_rubbish, importance_conserving_water, importance_saving_enery) into 2 clusters because the school wants to split the students into 2 groups to target with specific learning/lessons about environmental issues.
+
+
+Once you have set up the 2 clusters visualise a combination of the variables split by the clusters (e.g. plot importance_reducing_pollution vs importance_recycling_rubbish etc.) how might you describe these 2 groups in terms of characteristics on views on environmental issues back to the school?
