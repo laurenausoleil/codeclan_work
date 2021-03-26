@@ -1,0 +1,81 @@
+# Libraries
+
+```{r}
+library(tidyverse)
+library(tidytext)
+library(ggwordcloud)
+library(hcandersenr)
+library(harrypotter)
+library(janeaustenr)
+library(hcandersenr)
+library(text2vec)
+```
+
+# Get data
+```{r}
+fairy_tales <- hcandersen_en
+
+reviews <- movie_review
+```
+
+# Create a word cloud of the top words that appear in the book “The Little Mermaid”. You will need to
+
+Select only “The little mermaid” from the hcandersen_en data frame.
+Unnest the tokens and count the frequency of words
+Remove stop words
+Plot this using ggwordcloud(), from the package ggwordcloud.
+
+```{r}
+little_mermaid <- fairy_tales %>% 
+  filter(book == "The little mermaid") %>% 
+  unnest_tokens(output = word, input = text) %>% 
+  anti_join(stop_words) %>% 
+  group_by(word) %>% 
+  summarise(count = n())
+
+ggwordcloud(
+    words = little_mermaid$word, 
+    freq = little_mermaid$count,
+    random.order = FALSE
+  )
+```
+
+# Make a bar chart of the top 10 sentiment words in “The Little Mermaid”. Make the length of the bars depend on how often the words are said, and make the colour of the bars depend on the sentiment of the word.
+
+```{r}
+little_mermaid %>% 
+  inner_join(get_sentiments("bing")) %>% 
+  slice_max(count, n = 10) %>% 
+  ggplot() +
+  aes(x = word, y = count, fill = sentiment) +
+  geom_col() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1.2))
+```
+
+# Find the most common bigrams in the Harry Potter book “Chamber of Secrets” that start with “very” followed by a sentiment word from the "bing" sentiment list.
+
+```{r}
+harry_potter <- tibble(
+  ch = 1:length(chamber_of_secrets),
+  text = chamber_of_secrets
+)
+
+hp_bigrams <- harry_potter %>% 
+  unnest_tokens(
+    output = bigrams,
+    input = text,
+    token = "ngrams",
+    n = 2
+  )
+
+hp_bigrams_very_sentiment <- hp_bigrams %>% 
+  separate(bigrams, c("word1", "word2")) %>% 
+  filter(word1 == "very") %>% 
+  inner_join(get_sentiments("bing"), by = c("word2" = "word")) %>%  
+  unite("bigram", word1:word2, sep = " ") %>% 
+  group_by(bigram) %>% 
+  count(bigram, sort = T)
+
+hp_bigrams_very_sentiment
+```
+

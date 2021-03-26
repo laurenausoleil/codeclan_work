@@ -1,0 +1,214 @@
+
+
+# Visual representations of measures of model accuracy
+
+```{r}
+library(tidyverse)
+library(modelr)
+library(janitor)
+library(pROC)
+library(caret)
+```
+
+```{r}
+mortgage_data <- read_csv("data/mortgage_applications.csv") %>%
+  clean_names()
+
+mortgage_3_pred_model <- glm(accepted ~ tu_score + employed + age, data = mortgage_data, family = binomial(link = "logit"))
+```
+
+```{r}
+mortgage_data_with_3pred <- mortgage_data  %>% 
+  add_predictions(mortgage_3_pred_model, type = "response")
+head(mortgage_data_with_3pred)
+summary(mortgage_3_pred_model)
+```
+
+# Receiver Operating  Characteristic Curve
+
+ROC curve - a graphical summary of the performance of a binary classification model
+Made up of TPR (sensitivity) against 1 - TNR (specificity)
+
+ROC
+```{r}
+roc_obj_3pred <- mortgage_data_with_3pred %>% 
+  pROC::roc(response = accepted, predictor = pred)
+```
+
+Visualise ROC
+```{r}
+roc_curve <- ggroc(data = roc_obj_3pred, legacy.axes = TRUE) +
+  coord_fixed()
+
+roc_curve
+```
+The closer to the top right corner the better the model. A diagonal line sloping up from left to right would indicate the chances of success with random guessing.
+
+ROC objects help us to choose threshold values with the other information they contain
+```{r}
+classifier_data <- tibble(
+  threshold = roc_obj_3pred$thresholds,
+  sensitivity = roc_obj_3pred$sensitivities,
+  specificity = roc_obj_3pred$specificities
+)
+head(classifier_data)
+```
+
+## Using ROC to compare classifier models
+
+Build single predictor model
+```{r}
+mortgage_1pred_model <- glm(
+  accepted ~ tu_score, 
+  data = mortgage_data, 
+  family = binomial(link= "logit")
+)
+```
+
+Add predictions to mortgage data
+```{r}
+mortgage_data_with_1pred <- mortgage_data %>% 
+  add_predictions(mortgage_1pred_model, type = "response")
+```
+
+Generate ROC
+```{r}
+# library(pROC)
+roc_obj_1pred <- mortgage_data_with_1pred %>% 
+  roc(response = accepted, predictor = pred)
+```
+
+Pass multiple ROCs to ggroc
+```{r}
+ggroc(data = list(pred1 = roc_obj_1pred, pred3 = roc_obj_3pred), legacy.axes = TRUE) +
+  coord_fixed()
+```
+3 predictors creates a slightly better model, but requires more information and computing power.
+
+## Area Under the Curve
+AUC - a numerical value related to ROC. Larger AUC means an ROC curve closer to the top left.
+
+```{r}
+auc(roc_obj_1pred)
+auc(roc_obj_3pred)
+```
+
+## Gini Coefficient
+
+A normalisation of AUC which gives a perfect classifier a Gini coefficient of 1 (from an AUC of 1) and a random classifier a Gini coefficient of 0 (from an AUC of 0.5).
+
+# Cross Validation
+```{r}
+# library(caret)
+```
+
+Convert variables to factors
+```{r}
+mortgage_data_factor <- mortgage_data %>% 
+  mutate(employed = as_factor(if_else(employed, "t", "f")),
+         accepted = as_factor(if_else(accepted, "t", "f"))
+  )
+```
+
+Train Control object
+How caret will break up the data
+```{r}
+# repeated cross validation of 5 folds 100 times.
+
+train_control <- trainControl(
+  method = "repeatedcv",
+  number = 5,
+  repeats = 100,
+  savePredictions = TRUE,
+  classProbs = TRUE,
+  summaryFunction = twoClassSummary
+)
+```
+
+Train the model
+```{r}
+model <- train(
+  accepted ~ tu_score + employed + age,
+  data = mortgage_data_factor,
+  trControl =  train_control,
+  method = "glm",
+  family = binomial(link = "logit")
+)
+
+summary(model)
+```
+
+See results with a threshold of 0.5 and AUC labelled as ROC
+```{r}
+model$results
+```
+
+# Optimal threshold
+
+## Expected values and cost benefit analysis
+
+If you refer mortgage applicants to a bank and it costs you £5 to put forward an applicant with a £25 bonus for every succesful applicant you put forward.
+
+Costs and Benefits of:
+* true positive - + £20 True Positive Profit TPP
+* true negative - £0 TNP
+* false positive - -£5 FPP
+* false negative - £0 FNP
+
+Expeced profit per potential applicant 
+= 
+prob(pos) * [(TPR * TPP) + (FNR * FNP)] 
++
+prob(neg) * [(TNR * TNP) + (FPR * FPP)]
+
+The classifier data from roc_obj_3pred contains our TPR, FPR, TNR and FPR
+```{r}
+cba_classifier_data <- classifier_data %>% 
+  rename(
+    tpr = sensitivity,
+    tnr = specificity
+  ) %>% 
+  mutate(
+    fpr = 1 - tnr,
+    fnr = 1 - tpr
+  )
+```
+
+Prob(pos) and prob(neg) are in our original data
+
+```{r}
+prob_pos <- sum(mortgage_data_factor$accepted == "t") / 1000
+prob_neg <- sum(mortgage_data_factor$accepted == "f") / 1000
+```
+
+Profits
+```{r}
+tpp <- 20
+tnp <- 0
+fpp <- -5
+fnp <- 0
+```
+
+Add expected profit to classifier data
+```{r}
+cba_classifier_data <- cba_classifier_data %>% 
+  mutate(
+    exp_profit_per_pot_applicant =
+      prob_pos * (tpr * tpp + fnr * fnp) +
+      prob_neg * (tnr * tnp + fpr * fpp)
+  )
+```
+
+Visualise
+```{r}
+ggplot(cba_classifier_data) +
+  aes(x = threshold, y = exp_profit_per_pot_applicant) +
+  geom_line()
+```
+
+Find threshold with maximum profit per potential applicant
+```{r}
+cba_classifier_data %>% 
+  filter(exp_profit_per_pot_applicant == max(exp_profit_per_pot_applicant))
+```
+A threshold rate of 0.196 gives us the maximum profit per potential argument in this scenario.

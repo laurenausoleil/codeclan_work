@@ -1,0 +1,188 @@
+
+```{r}
+library(tidyverse)
+library(tidytext)
+```
+Build a character vector
+```{r}
+phrases <- c(
+  "here is some text",
+  "again more text",
+  "text is text"
+)
+```
+
+Convert to tibble
+```{r}
+example_text <- tibble(
+  phrase = phrases,
+  id = 1:length(phrases)
+)
+example_text
+```
+
+Tokenise Words
+```{r}
+words_df <- example_text %>% 
+  unnest_tokens(
+    output = word,
+    input = phrase,
+    token = "words"
+  )
+```
+
+Tidyverse on tokenised
+```{r}
+words_df %>% 
+  arrange(desc(word))
+words_df %>% 
+  filter(word == "text")
+```
+
+count words
+```{r}
+words_df %>% 
+  group_by(id) %>% 
+  summarise(count = n())
+```
+
+```{r}
+phrases <- c(
+  "Here is some text.",
+  "Again, more text!",
+  "TEXT is text?"
+)
+
+example <- tibble(
+  phrase = phrases,
+  id = 1:length(phrases)
+)
+
+example %>% 
+  unnest_tokens(
+    word,
+    phrase,
+    token = "words",
+    to_lower = FALSE
+  )
+```
+
+```{r}
+words_df %>% 
+  group_by(word) %>% 
+  summarise(count = n()) %>% 
+  arrange(desc(count))
+
+# Same as
+words_df %>% 
+  count(word, sort = TRUE)
+```
+
+# Task
+
+```{r}
+lines <- 
+c(
+  "Whose woods these are I think I know.",
+  "His house is in the village though;", 
+  "He will not see me stopping here",
+  "To watch his woods fill up with snow."
+)
+```
+
+Create a data frame that has two variables: one with each word, the second with the line number of the word.
+```{r}
+snowy_lines <-
+  tibble(
+    line = lines,
+    id = 1:length(lines)
+  ) %>% 
+  unnest_tokens(
+    output = word,
+    input = line,
+    token = "words"
+  )
+```
+
+
+Use this data frame to find all the words that appear more than once in the four lines.
+
+```{r}
+snowy_lines %>% 
+  count(word) %>% 
+  filter(n > 1)
+```
+
+# Working with larger texts
+```{r}
+library(janeaustenr)
+```
+
+```{r}
+class(prideprejudice)
+```
+
+```{r}
+head(prideprejudice, 20)
+```
+
+Tidy
+```{r}
+pride_book <- tibble(
+  id = 1:length(prideprejudice),
+  text = prideprejudice
+) %>% 
+  unnest_tokens(
+    output = word,
+    input = text
+  )
+
+pride_book %>% 
+  count(word, sort = TRUE)
+# our most common words are stop words
+
+head(pride_book, 20)
+```
+
+Remove stop words - useful, but not very sophisticated method
+```{r}
+# Stop words is built into tidytext sepaated into three different lexicons.
+tidytext::stop_words
+```
+
+```{r}
+pride_book %>% 
+  anti_join(stop_words #, not neccesary, R can identify by if two columns have the same name
+            )   %>% 
+  count(word, sort = TRUE)
+```
+Remove stop words from one lexicon
+```{r}
+pride_book %>% 
+  anti_join(filter(stop_words, lexicon == "snowball")) %>% 
+  count(word, sort = TRUE)
+```
+We see that snowball does not count mr, will and said as stop words.
+
+# Task - Find the most common words, not including stop words, in the book “Sense and Sensibility”.
+
+Load book object
+```{r}
+sense_book <- tibble(
+    line = sensesensibility,
+    id = 1:length(sensesensibility)
+  ) %>% 
+  unnest_tokens(
+    input = line,
+    output = word
+  )
+
+sense_book
+```
+Remove stop words and count.
+```{r}
+sense_book %>% 
+  anti_join(stop_words) %>% 
+  count(word, sort = TRUE)
+```
+

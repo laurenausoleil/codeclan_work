@@ -1,0 +1,97 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+```{r}
+library(tidyverse)
+library(janitor)
+library(modelr)
+library(broom)
+```
+
+Load and clean the names of mortgage_applications.csv.
+```{r}
+mortgage <- read_csv("data/mortgage_applications.csv") %>% 
+  clean_names()
+```
+
+Re-run the logistic regression on the dataset, again treating the tu_score, age and employed variables as predictors and the accepted variable as the binary dependent.
+
+```{r}
+mortgage_3pred_model <- glm(accepted ~ tu_score + age + employed,
+             data = mortgage,
+             family = binomial(link ="logit"))
+```
+
+Keep the model object (call it mortgage_3pred_model) and use it to predict estimated probabilities for the sample data using add_predictions() (call this mortage_data_with_3pred)
+Look as the head() of the data with predicted probabilities.
+```{r}
+mortgage_data_with_3pred <- mortgage  %>% 
+  add_predictions(mortgage_3pred_model, type = "response")
+
+head(mortgage_data_with_3pred, n = 15)
+```
+
+```{r}
+glance(mortgage_3pred_model)
+```
+
+# Threshold Probability
+
+```{r}
+# Set threshold
+threshold <- 0.6
+
+# Modify dataframe
+mortgage_data_with_3pred <- mortgage_data_with_3pred %>% 
+  mutate(pred_thresh_0.6 = pred >= threshold)
+
+# View results
+head(mortgage_data_with_3pred)
+
+# We see that we will get errors
+```
+
+# Confusion Matrix
+True Negatives, False Positives,
+False Negatives, True Positives
+
+```{r}
+confusion_matrix <- mortgage_data_with_3pred %>% 
+  tabyl(accepted, pred_thresh_0.6)
+
+confusion_matrix
+```
+NTP <- 179
+NTN <- 679
+NFP <- 49
+NFN <- 93
+
+True Positive
+```{r}
+mortgage_data_with_3pred %>% 
+  filter(tu_score == 631)
+```
+```{r}
+mortgage_data_with_3pred %>% 
+  filter(tu_score == 594)
+```
+
+# Accuracy = (nTP + nTN) / n
+
+Accuracy is not a sufficient measure in and of itself.
+Accuracy is a problem when our dataset is unbalanced because an incorrect threshold can get a high accuracy score.
+
+# Rates
+```{r}
+NTP <- 179
+NTN <- 679
+NFP <- 49
+NFN <- 93
+
+TPR <- NTP / (NTP + NFN)
+TNR <- NTN / (NTN + NFP)
+FPR <- NFP / (NFP + NTN)
+FNR <- NFN / (NFN + NTP)
+```
+

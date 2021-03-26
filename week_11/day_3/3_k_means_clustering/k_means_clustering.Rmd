@@ -227,3 +227,5 @@ clusterings %>%
   summarise(mean(high_school), mean(community_college))
 ```
 
+K means with category
+- K medoids
